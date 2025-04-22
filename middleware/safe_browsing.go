@@ -15,7 +15,7 @@ import (
 
 // SafeBrowsingOptions defines how common response headers for safe browsing are added.
 type SafeBrowsingOptions struct {
-	// XXSSProtection sets the `X-XSS-Protection` header to stops pages from loading when they detect reflected
+	// XXSSProtection sets the `X-XSS-Protection` header to stop pages from loading when they detect reflected
 	// cross-site scripting (XSS) attacks.
 	// Optional. Defaults to "1; mode=block".
 	XXSSProtection string `json:"x-xss-protection,omitempty"`
@@ -32,7 +32,7 @@ type SafeBrowsingOptions struct {
 	XFrameOptions string `json:"x-frame-options,omitempty"`
 
 	// HSTS controls the `Strict-Transport-Security` header to inform browsers that the site should only be
-	// accessed using HTTPS, and that any future attempts to access it using HTTP should automatically be
+	// accessed using HTTPS and that any future attempts to access it using HTTP should automatically be
 	// converted to HTTPS.
 	HSTS struct {
 		// MaxAge establishes the time, in seconds, that the browser should remember that a site is only to be
@@ -61,7 +61,7 @@ type SafeBrowsingOptions struct {
 
 // -----------------------------------------------------------------------------
 
-// DefaultSafeBrowsing creates a default SafeBrowsing middleware with commonly used options
+// DefaultSafeBrowsing creates default SafeBrowsing middleware with commonly used options
 func DefaultSafeBrowsing() webserver.HandlerFunc {
 	return NewSafeBrowsing(SafeBrowsingOptions{
 		XXSSProtection:      "1; mode=block",
@@ -70,7 +70,7 @@ func DefaultSafeBrowsing() webserver.HandlerFunc {
 	})
 }
 
-// NewSafeBrowsing creates a new SafeBrowsing middleware based on the specified options
+// NewSafeBrowsing creates new SafeBrowsing middleware based on the specified options
 func NewSafeBrowsing(opts SafeBrowsingOptions) webserver.HandlerFunc {
 	var xXssProtection []byte
 	var xContentTypeNoSniff []byte
@@ -128,7 +128,7 @@ func NewSafeBrowsing(opts SafeBrowsingOptions) webserver.HandlerFunc {
 			respHdrs.SetBytesK(util.HeaderStrictTransportSecurity, sb.String())
 		}
 
-		// Set Content-Security-Policy/Content-Security-Policy-Report-Only header
+		// Set the "Content-Security-Policy" or "Content-Security-Policy-Report-Only" header
 		if contentSecurityPolicy != nil {
 			if opts.ContentSecurityPolicyReportOnly {
 				respHdrs.SetBytesKV(util.HeaderContentSecurityPolicyReportOnly, contentSecurityPolicy)

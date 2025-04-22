@@ -42,7 +42,7 @@ func DisableClientCache() webserver.HandlerFunc {
 	})
 }
 
-// NewCacheControl creates a new client cache control middleware based on the specified options
+// NewCacheControl creates new client cache control middleware based on the specified options
 func NewCacheControl(opts CacheControlOptions) webserver.HandlerFunc {
 	var finalCacheValue []byte
 

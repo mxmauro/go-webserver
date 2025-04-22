@@ -87,7 +87,7 @@ func (req *RequestContext) {{$method.Name}}({{processParams $method.InTypes "in"
 		case "Success":
 		case "Error":
 
-			// These are replaced with versions that takes into account proxies
+			// These are replaced with versions that take into account proxies
 		case "Host":
 		case "RemoteIP":
 

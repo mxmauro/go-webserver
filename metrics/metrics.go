@@ -29,9 +29,9 @@ type Controller struct {
 	healthCallback      HealthCallback
 }
 
-// Options specifies metrics controller initialization options.
+// Options specify metrics controller initialization options.
 type Options struct {
-	// If Server is provided, use this server instead of creating a new one.
+	// If a server is provided, use this server instead of creating a new one.
 	Server *webserver.Server
 
 	// Server name to use when sending response headers. Defaults to 'metrics-server'.
@@ -52,7 +52,7 @@ type Options struct {
 	// AccessToken is an optional access token required to access the status endpoints.
 	AccessToken string
 
-	// If RequestAccessTokenInHealth is enabled, access token checked also in '/health' endpoint.
+	// If RequestAccessTokenInHealth is enabled, access token checked also in the "/health" endpoint.
 	RequestAccessTokenInHealth bool
 
 	// HealthCallback is a function that returns an object which, in turn, will be converted to JSON format.
@@ -92,7 +92,7 @@ func CreateController(opts Options) (*Controller, error) {
 		return nil, errors.New("invalid health callback")
 	}
 
-	// Create metrics object
+	// Create a metrics object
 	mws := Controller{
 		rp:             rundownprotection.Create(),
 		healthCallback: opts.HealthCallback,
@@ -113,7 +113,7 @@ func CreateController(opts Options) (*Controller, error) {
 			Address:            opts.Address,
 			Port:               opts.Port,
 			ReadTimeout:        10 * time.Second, // 10 seconds for reading a metrics request
-			WriteTimeout:       time.Minute,      // and 1 minute for write
+			WriteTimeout:       time.Minute,      // and 1 minute to write
 			MaxRequestBodySize: 512,              // Currently, no POST endpoints but leave a small buffer for future requests.
 			ListenErrorHandler: opts.ListenErrorHandler,
 			TLSConfig:          opts.TLSConfig,
@@ -139,7 +139,7 @@ func CreateController(opts Options) (*Controller, error) {
 	}
 	middlewares = append(middlewares, mws.createAliveMiddleware())
 	if opts.Server == nil {
-		// Only disable cache & support CORS if we own the webserver, else the caller must take care of this.
+		// Only disable cache and support CORS if we own the webserver, else the caller must take care of this.
 		middlewares = append(middlewares, middleware.DisableClientCache())
 		middlewares = append(middlewares, middleware.NewCORS(middleware.CORSOptions{
 			AllowMethods:        []string{"GET"},

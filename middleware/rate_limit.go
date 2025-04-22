@@ -49,9 +49,9 @@ type RateLimiterOptions struct {
 
 const rateLimiterMutexCount = 16 // NOTE: This number must be a power of two
 
-// NOTE: rateLimiterMemoryCacheEntriesCount does not reflect the real amount of entries that will fit in the
+// NOTE: rateLimiterMemoryCacheEntriesCount does not reflect the real number of entries that will fit in the
 //
-//	memory cache due to fastcache.Cache extra usage but it is a good approximation.
+//	memory cache due to fastcache.Cache extra usage, but it is a good approximation.
 const rateLimiterMemoryCacheEntriesCount = 100000
 
 // sizeof(currHits) + sizeof(prevHits) + sizeof(exp) = 16
@@ -69,7 +69,7 @@ type rateLimiterItem struct {
 
 // -----------------------------------------------------------------------------
 
-// NewRateLimiter wraps a middleware that limits the amount of requests from the same source.
+// NewRateLimiter wraps a middleware that limits the number of requests from the same source.
 func NewRateLimiter(opts RateLimiterOptions) webserver.HandlerFunc {
 	var expiration uint64
 	var cache *fastcache.Cache
@@ -115,7 +115,7 @@ func NewRateLimiter(opts RateLimiterOptions) webserver.HandlerFunc {
 		// Lock entry
 		mtx[mtxIdx].Lock()
 
-		// Get entry from cache
+		// Get entry from a cache
 		entry := rateLimiterItem{
 			storage: opts.ExternalStorage,
 			cache:   cache,
@@ -164,7 +164,7 @@ func NewRateLimiter(opts RateLimiterOptions) webserver.HandlerFunc {
 				return err
 			}
 
-			// Add Retry-After if not set by handler
+			// Add Retry-After if not set by the handler
 			if len(req.Response().Header.PeekBytes(util.HeaderHeaderRetryAfter)) == 0 {
 				// Return response with Retry-After header (https://tools.ietf.org/html/rfc6584)
 				req.Response().Header.SetBytesK(util.HeaderHeaderRetryAfter, strconv.FormatUint(resetTime, 10))

@@ -15,7 +15,7 @@ import (
 func TestMiddlewareAuth(t *testing.T) {
 	var statusCode int
 
-	//Create server
+	// Create server
 	srv := testcommon.RunWebServer(t, func(srv *webserver.Server) error {
 		// Add some middlewares
 		srv.Use(middleware.NewAuth(middleware.AuthOptions{
@@ -30,7 +30,7 @@ func TestMiddlewareAuth(t *testing.T) {
 	})
 	defer srv.Stop()
 
-	// Try authorization bearer
+	// Try with an authorization bearer
 	_, _, err := testcommon.QueryApiVersion(true, nil, http.Header{
 		"Authorization": []string{"Bearer abc1234"},
 	}, []int{200})
@@ -38,7 +38,7 @@ func TestMiddlewareAuth(t *testing.T) {
 		t.Fatalf("unable to query api with authorization bearer [%v]", err)
 	}
 
-	// Try bad authorization bearer
+	// Try with a bad authorization bearer
 	statusCode, _, err = testcommon.QueryApiVersion(true, nil, http.Header{
 		"Authorization": []string{"Bearer abc1234!!!"},
 	}, []int{401})
@@ -50,7 +50,7 @@ func TestMiddlewareAuth(t *testing.T) {
 		}
 	}
 
-	// Try header
+	// Try with a header
 	_, _, err = testcommon.QueryApiVersion(true, nil, http.Header{
 		"X-Auth": []string{"abc1234"},
 	}, []int{200})
@@ -58,7 +58,7 @@ func TestMiddlewareAuth(t *testing.T) {
 		t.Fatalf("unable to query api with header [%v]", err)
 	}
 
-	// Try bad header
+	// Try with a bad header
 	statusCode, _, err = testcommon.QueryApiVersion(true, nil, http.Header{
 		"X-Auth": []string{"abc1234!!!"},
 	}, []int{401})
@@ -70,7 +70,7 @@ func TestMiddlewareAuth(t *testing.T) {
 		}
 	}
 
-	// Try query parameter
+	// Try with a query parameter
 	_, _, err = testcommon.QueryApiVersion(true, map[string]string{
 		"auth": "abc1234",
 	}, nil, []int{200})
@@ -90,7 +90,7 @@ func TestMiddlewareAuth(t *testing.T) {
 		}
 	}
 
-	// Try cookie
+	// Try with a cookie
 	_, _, err = testcommon.QueryApiVersion(true, nil, http.Header{
 		"Cookie": []string{"auth=abc1234"},
 	}, []int{200})
@@ -98,7 +98,7 @@ func TestMiddlewareAuth(t *testing.T) {
 		t.Fatalf("unable to query api with cookie [%v]", err)
 	}
 
-	// Try bad cookie
+	// Try with a bad cookie
 	statusCode, _, err = testcommon.QueryApiVersion(true, nil, http.Header{
 		"Cookie": []string{"auth=abc1234!!!"},
 	}, []int{401})

@@ -23,7 +23,7 @@ type State struct {
 // -----------------------------------------------------------------------------
 
 func TestMetricsWebServer(t *testing.T) {
-	// Create a new health & metrics controller with a web server
+	// Create a new health and metrics controller with a web server
 	mc, err := metrics.CreateController(metrics.Options{
 		Address: "127.0.0.1",
 		Port:    3000,

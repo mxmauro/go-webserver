@@ -21,7 +21,7 @@ type TrailingSlashOptions struct {
 
 // -----------------------------------------------------------------------------
 
-// NewTrailingSlash creates a new middleware to handle trailing slashes in request's paths
+// NewTrailingSlash creates new middleware to handle trailing slashes in request's paths
 func NewTrailingSlash(opts TrailingSlashOptions) webserver.HandlerFunc {
 	// Setup middleware function
 	return func(req *webserver.RequestContext) error {

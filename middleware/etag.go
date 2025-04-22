@@ -28,7 +28,7 @@ func NewETag(weak bool) webserver.HandlerFunc {
 	return func(req *webserver.RequestContext) error {
 		var buf [2 + 1 + 24 + 1 + 24 + 1 + 64]byte
 
-		// Go to next middleware first
+		// Go to the next middleware first
 		err := req.Next()
 		if err != nil {
 			return err
@@ -39,7 +39,7 @@ func NewETag(weak bool) webserver.HandlerFunc {
 			return nil
 		}
 
-		// Do not generate a new ETag if header is already present
+		// Do not generate a new ETag if the header is already present
 		if req.RequestHeaders().PeekBytes(util.HeaderETag) != nil {
 			return nil
 		}
@@ -53,7 +53,7 @@ func NewETag(weak bool) webserver.HandlerFunc {
 		// Calculate ETag
 		bufOfs := 0
 		if weak {
-			// Add weak tag
+			// Add a weak tag
 			buf[0] = 'W'
 			buf[1] = '/'
 			bufOfs = 2

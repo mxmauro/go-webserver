@@ -21,7 +21,7 @@ type VectorMetric []struct {
 
 // -----------------------------------------------------------------------------
 
-// NewCounterWithCallback creates a single counter metric where its data is populated by calling a callback
+// NewCounterWithCallback creates a single counter-metric where its data is populated by calling a callback
 func (mws *Controller) NewCounterWithCallback(name string, help string, handler ValueHandler) error {
 	coll := prometheus.NewCounterFunc(
 		prometheus.CounterOpts{

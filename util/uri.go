@@ -9,8 +9,8 @@ import (
 
 // -----------------------------------------------------------------------------
 
-// SanitizeUrlPath normalizes an url path. If trailingSlash < 0, removes the ending slash if any,
-// if trailingSlash > 0, always add and, if zero, keep like original
+// SanitizeUrlPath normalizes a url path. If trailingSlash < 0, removes the ending slash if any,
+// if trailingSlash > 0, always add and, if zero, keep like the original
 func SanitizeUrlPath(path string, trailingSlash int) (string, error) {
 	// Nothing to sanitize?
 	if len(path) == 0 {
@@ -23,7 +23,7 @@ func SanitizeUrlPath(path string, trailingSlash int) (string, error) {
 	// Check if a trailing slash is present
 	endsWithSlash := strings.HasSuffix(path, "/")
 
-	// Split path in fragments and remove empty
+	// Split the path in fragments and remove empty
 	newPathFragments := make([]string, 0)
 	pathFragments := strings.Split(path, "/")
 	for _, frag := range pathFragments {
