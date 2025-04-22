@@ -4,7 +4,6 @@ package go_webserver
 
 import (
 	"crypto/tls"
-	"embed"
 	"errors"
 	"io/fs"
 	"net"
@@ -34,7 +33,7 @@ type HandlerFunc func(req *RequestContext) error
 
 // Server is the main server object
 type Server struct {
-	fastserver             fasthttp.Server
+	srv                    fasthttp.Server
 	router                 *router.Router
 	bindAddress            net.IP
 	bindPort               uint16
@@ -48,7 +47,7 @@ type Server struct {
 	trustedProxy           *trusted_proxy.TrustedProxy
 }
 
-// Options specifies the server creation options.
+// Options specify the server creation options.
 type Options struct {
 	// Server name to use when sending response headers. Defaults to 'go-webserver'.
 	Name string
@@ -56,7 +55,7 @@ type Options struct {
 	// Address is the bind address to attach the server listener.
 	Address string
 
-	// Port is the port number the server will listen.
+	// Port is the port number the server will listen to.
 	Port uint16
 
 	// ReadTimeout is the amount of time allowed to read the full request including body. The connection's read
@@ -73,10 +72,10 @@ type Options struct {
 	// Maximum request body size.
 	MaxRequestBodySize int
 
-	// Closes incoming connections after sending the first response to client.
+	// Closes incoming connections after sending the first response to the client.
 	DisableKeepalive bool
 
-	// Enable request body streaming and call the handler sooner when given body is larger than the current limit.
+	// Enable request body streaming and call the handler sooner when the given body is larger than the current limit.
 	StreamRequestBody bool
 
 	// Disable Multipart Form data parsing and return the binary blob instead.
@@ -107,10 +106,10 @@ type Options struct {
 
 	// Use TrustedProxies to prevent header spoofing when you are behind a proxy. When used, and the remote IP
 	// is a trusted proxy, the RequestContext object will behalf in the following way:
-	//   1. Scheme:   The value from X-Forwarded-Proto, X-Forwarded-Protocol, X-Forwarded-Ssl or X-Url-Scheme header
+	//   1. Scheme: The value from X-Forwarded-Proto, X-Forwarded-Protocol, X-Forwarded-Ssl or X-Url-Scheme header
 	//                will be used.
 	//   2. RemoteIP: The value on ProxyHeader header will be used.
-	//   3. Host:     The value from X-Forwarded-Host header will be used.
+	//   3. Host: The value from the X-Forwarded-Host header will be used.
 	TrustedProxies []string
 }
 
@@ -119,14 +118,14 @@ type ServerFilesOptions struct {
 	// Base directory where public files are located
 	RootDirectory string
 
-	// If a path with no file is requested (like '/'), by default the file server will attempt to locate
+	// If a path with no file is requested (like '/'), by default, the file server will attempt to locate
 	// 'index.html' and 'index.htm' files and serve them if available.
 	DisableDefaultIndexPages bool
 
 	// Accept client byte range requests
 	AcceptByteRange bool
 
-	// Custom file not found handler. Defaults to the server NotFound handler.
+	// Custom "file-not-found" handler. Defaults to the server NotFound handler.
 	NotFoundHandler HandlerFunc
 
 	// File-system to use. Defaults to the OS file-system.
@@ -212,7 +211,7 @@ func Create(opts Options) (*Server, error) {
 		srv.trustedProxy = trusted_proxy.NewTrustedProxy(opts.TrustedProxies)
 	}
 
-	// Set default request error handler if none was specified.
+	// Set the default request error handler if none was specified.
 	if srv.requestErrorHandler == nil {
 		srv.requestErrorHandler = func(req *RequestContext, err error) {
 			req.InternalServerError(err.Error())
@@ -243,14 +242,14 @@ func Create(opts Options) (*Server, error) {
 		}
 	}
 
-	// Check server name
+	// Check the server name
 	serverName := opts.Name
 	if len(serverName) == 0 {
 		serverName = defaultServerName
 	}
 
 	// Create FastHTTP server
-	srv.fastserver = fasthttp.Server{
+	srv.srv = fasthttp.Server{
 		Name:               serverName,
 		Handler:            srv.createMainHandler(),
 		ReadTimeout:        readTimeout,
@@ -285,19 +284,19 @@ func (srv *Server) Start() error {
 		address = "[" + address + "]"
 	}
 
-	// Create the graceful shutdown listener
+	// Create a graceful shutdown listener
 	ln, err := createListener(network, address+":"+strconv.Itoa(int(srv.bindPort)))
 	if err != nil {
 		srv.setState(stateNotStarted)
 		return err
 	}
 
-	// Wrap listener into a TLS listener if a TLS configuration was specified
-	if srv.fastserver.TLSConfig != nil {
-		ln = tls.NewListener(ln, srv.fastserver.TLSConfig.Clone())
+	// Wrap a listener into a TLS listener if a TLS configuration was specified
+	if srv.srv.TLSConfig != nil {
+		ln = tls.NewListener(ln, srv.srv.TLSConfig.Clone())
 	}
 
-	// Start accepting connections and run in background until shutdown or error
+	// Start accepting connections and run in the background until shutdown or error
 	srv.serve(ln)
 
 	// Done
@@ -309,7 +308,7 @@ func (srv *Server) Stop() {
 	if atomic.CompareAndSwapInt32(&srv.state, stateRunning, stateStopping) {
 		srv.startShutdownSignal <- struct{}{}
 
-		// Spin until server is really stopped
+		// Spin until the server is really stopped
 		for atomic.LoadInt32(&srv.state) == stateStopping {
 			runtime.Gosched()
 		}
@@ -331,7 +330,7 @@ func (srv *Server) HEAD(path string, handler HandlerFunc, middlewares ...Handler
 	srv.router.Handle("HEAD", path, srv.createEndpointHandler(handler, middlewares...))
 }
 
-// OPTIONS adds a OPTIONS handler for the specified route
+// OPTIONS add an OPTIONS handler for the specified route
 func (srv *Server) OPTIONS(path string, handler HandlerFunc, middlewares ...HandlerFunc) {
 	srv.router.Handle("OPTIONS", path, srv.createEndpointHandler(handler, middlewares...))
 }
@@ -361,24 +360,18 @@ func (srv *Server) CustomMethod(method string, path string, handler HandlerFunc,
 	srv.router.Handle(method, path, srv.createEndpointHandler(handler, middlewares...))
 }
 
-// ServeFiles adds custom filesystem handler for the specified route
+// ServeFiles adds a custom filesystem handler for the specified route
 func (srv *Server) ServeFiles(path string, opts ServerFilesOptions, middlewares ...HandlerFunc) error {
 	var err error
-	var isEmbedFS bool
-
-	// Check if the provided filesystem is embedded
-	if opts.FS != nil {
-		_, isEmbedFS = opts.FS.(embed.FS)
-	}
 
 	// Check some options
-	if !isEmbedFS {
+	if opts.FS == nil {
 		if !filepath.IsAbs(opts.RootDirectory) {
 			return errors.New("absolute path must be provided")
 		}
 	}
 
-	// Normalize path
+	// Normalize the path
 	path, err = util.SanitizeUrlPath(path, 1)
 	if err != nil {
 		return err
@@ -391,7 +384,7 @@ func (srv *Server) ServeFiles(path string, opts ServerFilesOptions, middlewares 
 	}
 
 	// Create filesystem
-	fs := fasthttp.FS{
+	fhfs := fasthttp.FS{
 		FS:                 opts.FS,
 		Root:               opts.RootDirectory,
 		IndexNames:         indexNames,
@@ -400,15 +393,15 @@ func (srv *Server) ServeFiles(path string, opts ServerFilesOptions, middlewares 
 		PathNotFound:       srv.router.NotFound,
 	}
 	if opts.NotFoundHandler != nil {
-		fs.PathNotFound = srv.createEndpointHandler(opts.NotFoundHandler)
+		fhfs.PathNotFound = srv.createEndpointHandler(opts.NotFoundHandler)
 	}
 
-	// If the url path contains a subdirectory within the base path, we must remove them in order to avoid mapping it
-	// into the filesystem. I.e.: If base path is '/foo/bar' and root-dir is '/tmp/public' is request to
+	// If the url path contains a subdirectory within the base path, we must remove them to avoid mapping it
+	// into the filesystem. I.e.: If the base path is '/foo/bar' and root-dir is '/tmp/public' is request to
 	// '/foo/bar/index.html' would become '/tmp/public/foo/bar/index.html' instead of '/tmp/public/index.html'.
 	toStrip := strings.Count(path[:len(path)-(len(serveFilesSuffix)+1)], "/") // Exclude the last fragment
 	if toStrip > 0 {
-		fs.PathRewrite = fasthttp.NewPathSlashesStripper(toStrip)
+		fhfs.PathRewrite = fasthttp.NewPathSlashesStripper(toStrip)
 	}
 
 	if opts.FS != nil && len(opts.FSBasePath) > 0 {
@@ -424,8 +417,8 @@ func (srv *Server) ServeFiles(path string, opts ServerFilesOptions, middlewares 
 		}
 
 		// Create a new path rewrite function
-		origPathRewrite := fs.PathRewrite
-		fs.PathRewrite = func(ctx *fasthttp.RequestCtx) []byte {
+		origPathRewrite := fhfs.PathRewrite
+		fhfs.PathRewrite = func(ctx *fasthttp.RequestCtx) []byte {
 			var newPath []byte
 
 			if origPathRewrite != nil {
@@ -438,7 +431,7 @@ func (srv *Server) ServeFiles(path string, opts ServerFilesOptions, middlewares 
 	}
 
 	// Wrap file-system handler
-	fsHandler := fs.NewRequestHandler()
+	fsHandler := fhfs.NewRequestHandler()
 	handler := func(req *RequestContext) error {
 		req.CallFastHttpHandler(fsHandler)
 		return nil

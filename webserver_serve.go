@@ -29,13 +29,13 @@ func (srv *Server) serve(ln net.Listener) {
 	ch := make(chan error, 1)
 
 	go func(ln net.Listener) {
-		ch <- srv.fastserver.Serve(ln)
+		ch <- srv.srv.Serve(ln)
 	}(ln)
 
-	// Set new state
+	// Set a new state
 	srv.setState(stateRunning)
 
-	// Run in background until shutdown or error
+	// Run in the background until shutdown or error
 	go srv.serveLoop(ch)
 }
 
@@ -55,7 +55,7 @@ func (srv *Server) serveLoop(ch chan error) {
 
 		// Attempt the graceful shutdown by closing the listener and completing all inflight requests.
 		ctx, ctxCancel := context.WithTimeout(context.Background(), shutdownTimeout)
-		_ = srv.fastserver.ShutdownWithContext(ctx)
+		_ = srv.srv.ShutdownWithContext(ctx)
 		ctxCancel()
 	}
 

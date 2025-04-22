@@ -50,7 +50,7 @@ func RunWebServer(t *testing.T, initCB func(srv *webserver.Server) error) *TestW
 		t.Fatalf("unable to create web server [%v]", err)
 	}
 
-	// Add some dummy endpoints
+	// Add some fake endpoints
 	tws.Server.GET("/api/version", renderApiVersion)
 	tws.Server.POST("/api/version", renderApiVersion)
 
@@ -123,6 +123,9 @@ func QueryApiVersion(doPost bool, queryParams map[string]string, headers http.He
 	}
 	if err != nil {
 		return 0, nil, err
+	}
+	if resp == nil {
+		return 0, nil, fmt.Errorf("unexpected status code while querying api [0]")
 	}
 
 	statusOk := false

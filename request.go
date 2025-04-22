@@ -25,12 +25,14 @@ var (
 		util.HeaderAccessControlAllowOrigin,
 	}
 
-	errPathNotHanlded    = errors.New("path not handled")
+	errPathNotHandled    = errors.New("path not handled")
 	errInvalidCallToNext = errors.New("invalid call to Next")
 )
 
 // -----------------------------------------------------------------------------
 
+// RequestContext represents a request context. It is used to handle the request and to provide access to the request
+// and response objects.
 type RequestContext struct {
 	ctx     *fasthttp.RequestCtx
 	tp      *trusted_proxy.TrustedProxy
@@ -90,7 +92,7 @@ func (req *RequestContext) Error(msg string, statusCode int) {
 		req.ctx.Response.Header.SetBytesKV(preservedHeadersOnError[idx], value)
 	}
 
-	// Set new status
+	// Set the new status
 	req.ctx.SetStatusCode(statusCode)
 
 	// Set body and Content-Type
@@ -237,7 +239,7 @@ func (req *RequestContext) Next() error {
 			if req.handler != nil {
 				err = req.Next()
 			} else {
-				err = errPathNotHanlded
+				err = errPathNotHandled
 			}
 		}
 	} else if req.middlewareIndex <= req.srvMiddlewaresLen+1+req.middlewaresLen {

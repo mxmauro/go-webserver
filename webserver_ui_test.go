@@ -24,7 +24,7 @@ func TestWebServerUI(t *testing.T) {
 		srv.Use(middleware.DefaultCORS())
 		srv.Use(middleware.DisableClientCache())
 
-		// Add public files to server
+		// Add public files to the server
 		err := srv.ServeFiles("/", webserver.ServerFilesOptions{
 			RootDirectory: testcommon.GetWorkingDirectory(t) + "testdata/public",
 		}, middleware.NewCompression(middleware.CompressionLevelDefault))

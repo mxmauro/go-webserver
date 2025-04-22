@@ -9,6 +9,7 @@ import (
 
 // -----------------------------------------------------------------------------
 
+// TrustedProxy represents a list of trusted proxies
 type TrustedProxy struct {
 	proxiesMap  map[string]struct{}
 	proxyRanges []*net.IPNet
@@ -16,13 +17,14 @@ type TrustedProxy struct {
 
 // -----------------------------------------------------------------------------
 
+// NewTrustedProxy creates a new trusted proxy list
 func NewTrustedProxy(proxies []string) *TrustedProxy {
 	tp := TrustedProxy{
 		proxiesMap:  make(map[string]struct{}),
 		proxyRanges: make([]*net.IPNet, 0),
 	}
 
-	// Build trusted proxy list
+	// Build a trusted proxy list
 	for _, ipAddress := range proxies {
 		if strings.Contains(ipAddress, "/") {
 			_, ipNet, err := net.ParseCIDR(ipAddress)
@@ -38,6 +40,7 @@ func NewTrustedProxy(proxies []string) *TrustedProxy {
 	return &tp
 }
 
+// IsIpTrusted checks if the given IP address is trusted
 func (tp *TrustedProxy) IsIpTrusted(ip net.IP) bool {
 	if _, ok := tp.proxiesMap[ip.String()]; ok {
 		return true

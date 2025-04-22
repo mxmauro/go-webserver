@@ -20,7 +20,7 @@ type PanicOptions struct {
 	// StackSize establishes the maximum stack buffer to print in bytes.
 	StackSize int `json:"stackSize,omitempty"`
 
-	// IncludeAllGoRoutines, if true, then the stack of all the go routines are included.
+	// IncludeAllGoRoutines, if true, then the stacks of all the go routines are included.
 	IncludeAllGoRoutines bool `json:"includeAllGoRoutines,omitempty"`
 
 	// PanicErrorHandler is an optional custom callback to call if a panic is raised.

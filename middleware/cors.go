@@ -18,7 +18,7 @@ import (
 
 // CORSOptions defines the behavior on how CORS requests should be handled.
 type CORSOptions struct {
-	// List of origins that may access the resource. Defaults to "*" if list is empty.
+	// List of origins that may access the resource. Defaults to "*" if a list is empty.
 	AllowOrigins []string `json:"allow-origins,omitempty"`
 
 	// List methods allowed when accessing the resource. If the list is defined but empty, the preflight `Allow`
@@ -28,15 +28,15 @@ type CORSOptions struct {
 	// List of request headers that can be used when making the actual request.
 	AllowHeaders []string `json:"allow-headers,omitempty"`
 
-	// This flag indicates whether the response to the request can be exposed when the credentials flag is true.
+	// This flag indicates whether the response to the request can be exposed when the credential flag is true.
 	// Ignored if allowed origins is "*".
 	// See: http://blog.portswigger.net/2016/10/exploiting-cors-misconfigurations-for.html
 	AllowCredentials bool `json:"allow-credentials,omitempty"`
 
-	// A whitelist headers that clients are allowed to access.
+	// A set of headers that clients are allowed to access.
 	ExposeHeaders []string `json:"expose-headers,omitempty"`
 
-	// This field indicates  how many seconds the results of a preflight request can be cached. Defaults to 0.
+	// This field indicates how many seconds the results of a preflight request can be cached. Defaults to 0.
 	MaxAge int `json:"max-age,omitempty"`
 
 	// This flag indicates whether the Access-Control-Allow-Private-Network response header should be set to true and
@@ -57,7 +57,7 @@ func DefaultCORS() webserver.HandlerFunc {
 	return NewCORS(CORSOptions{})
 }
 
-// NewCORS creates a new CORS middleware based on the specified options
+// NewCORS creates new CORS middleware based on the specified options
 func NewCORS(opts CORSOptions) webserver.HandlerFunc {
 	var allowedOrigins []originPattern
 	var allowedMethods []byte

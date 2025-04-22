@@ -13,7 +13,7 @@ import (
 	"strings"
 	"time"
 
-	pprof_profile "github.com/google/pprof/profile"
+	pprofprofile "github.com/google/pprof/profile"
 )
 
 // -----------------------------------------------------------------------------
@@ -41,7 +41,7 @@ var debugProfiles []debugProfile
 
 // ServeDebugProfiles adds the GO runtime profile handlers to a web server
 func (srv *Server) ServeDebugProfiles(basePath string, middlewares ...HandlerFunc) {
-	// Prepare debug profile array if not done yet
+	// Prepare a debug profile array if not done yet
 	if debugProfiles == nil {
 		for _, profile := range pprof.Profiles() {
 			debugProfiles = append(debugProfiles, debugProfile{
@@ -76,7 +76,7 @@ func (srv *Server) ServeDebugProfiles(basePath string, middlewares ...HandlerFun
 		basePath = basePath[:len(basePath)-1]
 	}
 
-	// Add index page
+	// Add an index page
 	srv.GET(basePath, onDebugProfilesIndex, middlewares...)
 
 	// Add profile pages
@@ -132,7 +132,7 @@ td.ralign {
 	<tbody>
 `)
 
-	// Write each profile on main table
+	// Write each profile on the main table
 	for _, p := range debugProfiles {
 		link := &url.URL{
 			Path: path + p.name,
@@ -205,7 +205,7 @@ func onGenerateProfile(req *RequestContext) error {
 
 	case "json":
 		var b bytes.Buffer
-		var pf *pprof_profile.Profile
+		var pf *pprofprofile.Profile
 		var flameGraphRootNode *flameGraphNode
 
 		err = gatherCpuProfile(req, secs, &b)
@@ -214,8 +214,8 @@ func onGenerateProfile(req *RequestContext) error {
 			return nil
 		}
 
-		// Use google/pprof to parse the profile
-		pf, err = pprof_profile.Parse(&b)
+		// Use google-pprof to parse the profile
+		pf, err = pprofprofile.Parse(&b)
 		if err != nil {
 			req.InternalServerError(fmt.Sprintf("Unable to parse CPU profile [err=%s]", err))
 			return nil
@@ -255,7 +255,7 @@ func gatherCpuProfile(ctx context.Context, secs int, w io.Writer) error {
 }
 
 // Parse the pprof profile and collapse the stacks into a flame graph structure.
-func createFlameGraph(profile *pprof_profile.Profile) (*flameGraphNode, error) {
+func createFlameGraph(profile *pprofprofile.Profile) (*flameGraphNode, error) {
 	root := &flameGraphNode{
 		FunctionName: "root",
 	}

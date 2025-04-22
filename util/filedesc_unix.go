@@ -10,6 +10,7 @@ import (
 
 // -----------------------------------------------------------------------------
 
+// CheckMaxFileDescriptors checks if the current process has enough file descriptors to open the given number of files.
 func CheckMaxFileDescriptors(value uint64) bool {
 	var rLimit syscall.Rlimit
 

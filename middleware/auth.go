@@ -48,7 +48,7 @@ type AuthOptions struct {
 	// NOTE: CookieName is evaluated after the above.
 	CookieName string
 
-	// ValidateHandler is a function to validate key.
+	// ValidateHandler is a function to validate a key.
 	ValidateHandler AuthValidatorFunc
 }
 
@@ -129,7 +129,7 @@ func NewAuth(opts AuthOptions) webserver.HandlerFunc {
 			}
 		}
 
-		// Validate it, if a key is found
+		// Validate it if a key is found
 		if len(key) == 0 {
 			err = ErrNoKeyProvided
 		} else {

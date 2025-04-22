@@ -8,6 +8,7 @@ import (
 
 // -----------------------------------------------------------------------------
 
+// DoesSubdomainMatch checks if the given domain matches the given pattern.
 func DoesSubdomainMatch(domain string, pattern string) bool {
 	domainIdx := strings.Index(domain, "://")
 	patternIdx := strings.Index(pattern, "://")
