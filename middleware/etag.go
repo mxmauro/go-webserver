@@ -22,38 +22,38 @@ var (
 
 // -----------------------------------------------------------------------------
 
-// NewETag creates a middleware that adds/checks etags
+// NewETag creates a middleware that adds and checks ETags.
 func NewETag(weak bool) webserver.HandlerFunc {
-	// Setup middleware function
+	// Set up the middleware function.
 	return func(req *webserver.RequestContext) error {
 		var buf [2 + 1 + 24 + 1 + 24 + 1 + 64]byte
 
-		// Go to the next middleware first
+		// Go to the next middleware first.
 		err := req.Next()
 		if err != nil {
 			return err
 		}
 
-		// Generate ETags only on successful responses
+		// Generate ETags only for successful responses.
 		if req.Response().StatusCode() != http.StatusOK {
 			return nil
 		}
 
-		// Do not generate a new ETag if the header is already present
+		// Do not generate a new ETag if the header is already present.
 		if req.RequestHeaders().PeekBytes(util.HeaderETag) != nil {
 			return nil
 		}
 
-		// Do not generate ETag if no response body is available
+		// Do not generate an ETag if no response body is available.
 		body := req.Response().Body()
 		if len(body) == 0 {
 			return nil
 		}
 
-		// Calculate ETag
+		// Calculate the ETag.
 		bufOfs := 0
 		if weak {
-			// Add a weak tag
+			// Add a weak tag.
 			buf[0] = 'W'
 			buf[1] = '/'
 			bufOfs = 2
@@ -69,37 +69,37 @@ func NewETag(weak bool) webserver.HandlerFunc {
 
 		etag := buf[:bufOfs]
 
-		// Get ETag header from request
+		// Get the ETag header from the request.
 		clientETag := req.RequestHeaders().PeekBytes(util.HeaderIfNoneMatch)
 		if len(clientETag) > 0 {
-			// Is client's ETag is weak?
+			// Check whether the client's ETag is weak.
 			if bytes.HasPrefix(clientETag, weakETagPrefix) {
-				// Is server's ETag is weak?
+				// Check whether the server's ETag is weak.
 				if bytes.Equal(clientETag[2:], etag) || bytes.Equal(clientETag[2:], etag[2:]) {
-					// Tag is the same
+					// The tag is the same.
 					req.NoContent(fasthttp.StatusNotModified)
 				} else {
-					// Tag is different, add it
+					// The tag is different, so add it.
 					req.ResponseHeaders().SetBytesKV(util.HeaderETag, etag)
 				}
 
-				// Done
+				// Done.
 				return nil
 			}
 
 			if bytes.Contains(clientETag, etag) {
-				// Tag is the same
+				// The tag is the same.
 				req.NoContent(fasthttp.StatusNotModified)
 
-				// Done
+				// Done.
 				return nil
 			}
 		}
 
-		// ETag not present or different
+		// The ETag is not present or is different.
 		req.ResponseHeaders().SetBytesKV(util.HeaderETag, etag)
 
-		// Done
+		// Done.
 		return nil
 	}
 }

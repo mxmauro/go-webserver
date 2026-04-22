@@ -83,7 +83,7 @@ const (
 
 // -----------------------------------------------------------------------------
 
-// CreateController initializes and creates a new controller
+// CreateController initializes and creates a new controller.
 func CreateController(opts Options) (*Controller, error) {
 	var path string
 	var err error
@@ -92,13 +92,13 @@ func CreateController(opts Options) (*Controller, error) {
 		return nil, errors.New("invalid health callback")
 	}
 
-	// Create a metrics object
+	// Create the metrics object.
 	mws := Controller{
 		rp:             rundownprotection.Create(),
 		healthCallback: opts.HealthCallback,
 	}
 
-	// Create webserver
+	// Create the web server.
 	if opts.Server != nil {
 		mws.server = opts.Server
 	} else {
@@ -125,14 +125,14 @@ func CreateController(opts Options) (*Controller, error) {
 		}
 	}
 
-	// Create Prometheus handler
+	// Create the Prometheus handler.
 	err = mws.createPrometheusRegistry()
 	if err != nil {
 		mws.Stop()
 		return nil, err
 	}
 
-	// Add middlewares
+	// Add the middlewares.
 	middlewares := make([]webserver.HandlerFunc, 0)
 	if len(opts.Middlewares) > 0 {
 		middlewares = append(middlewares, opts.Middlewares...)
@@ -148,7 +148,7 @@ func CreateController(opts Options) (*Controller, error) {
 		}))
 	}
 
-	// Create middlewares with authorization
+	// Create the authorization middlewares.
 	middlewaresWithAuth := make([]webserver.HandlerFunc, len(middlewares))
 	copy(middlewaresWithAuth, middlewares)
 	if len(opts.AccessToken) > 0 {
@@ -160,13 +160,13 @@ func CreateController(opts Options) (*Controller, error) {
 		}))
 	}
 
-	// Add health handler to web server
+	// Add the health handler to the web server.
 	m := middlewares
 	if opts.RequestAccessTokenInHealth {
 		m = middlewaresWithAuth
 	}
 
-	// Add health handler to web server
+	// Add the UI handler to the web server.
 	if len(opts.HealthApiPath) > 0 {
 		path, err = util.SanitizeUrlPath(opts.HealthApiPath, -1)
 		if err != nil {
@@ -178,7 +178,7 @@ func CreateController(opts Options) (*Controller, error) {
 	}
 	mws.server.GET(path, mws.getHealthHandler(), m...)
 
-	// Add metrics handler to web server
+	// Add the metrics handler to the web server.
 	if len(opts.MetricsApiPath) > 0 {
 		path, err = util.SanitizeUrlPath(opts.MetricsApiPath, -1)
 		if err != nil {
@@ -190,7 +190,7 @@ func CreateController(opts Options) (*Controller, error) {
 	}
 	mws.server.GET(path, mws.getMetricsHandler(), middlewaresWithAuth...)
 
-	// Add debug profiles handler to web server
+	// Add the debug-profiles handler to the web server.
 	if opts.EnableDebugProfiles {
 		if len(opts.DebugProfilesApiPath) > 0 {
 			path, err = util.SanitizeUrlPath(opts.DebugProfilesApiPath, -1)
@@ -204,11 +204,11 @@ func CreateController(opts Options) (*Controller, error) {
 		mws.server.ServeDebugProfiles(path, middlewaresWithAuth...)
 	}
 
-	// Done
+	// Done.
 	return &mws, nil
 }
 
-// Start starts the monitor's internal web server
+// Start starts the monitor's internal web server.
 func (mws *Controller) Start() error {
 	if mws.server == nil {
 		return errors.New("metrics monitor web server not initialized")
@@ -219,14 +219,14 @@ func (mws *Controller) Start() error {
 	return mws.server.Start()
 }
 
-// Stop destroys the monitor and stops the internal web server
+// Stop destroys the monitor and stops the internal web server.
 func (mws *Controller) Stop() {
-	// Initiate shutdown
+	// Initiate shutdown.
 	mws.rp.Wait()
 
-	// Cleanup
+	// Clean up.
 	if mws.server != nil {
-		// Stop the internal web server if running
+		// Stop the internal web server if it is running.
 		if mws.usingInternalServer {
 			mws.server.Stop()
 		}
@@ -236,7 +236,7 @@ func (mws *Controller) Stop() {
 	mws.healthCallback = nil
 }
 
-// Registry returns the prometheus registry object
+// Registry returns the Prometheus registry object.
 func (mws *Controller) Registry() *prometheus.Registry {
 	return mws.registry
 }

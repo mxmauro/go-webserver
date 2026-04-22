@@ -27,7 +27,7 @@ type CacheControlOptions struct {
 
 // -----------------------------------------------------------------------------
 
-// DisableClientCache creates a default cache control middleware that disables the client's cache
+// DisableClientCache creates a default cache-control middleware that disables the client's cache.
 func DisableClientCache() webserver.HandlerFunc {
 	var zero uint32
 
@@ -42,11 +42,11 @@ func DisableClientCache() webserver.HandlerFunc {
 	})
 }
 
-// NewCacheControl creates new client cache control middleware based on the specified options
+// NewCacheControl creates a new client cache-control middleware based on the specified options.
 func NewCacheControl(opts CacheControlOptions) webserver.HandlerFunc {
 	var finalCacheValue []byte
 
-	// Build header content
+	// Build the header content.
 	sb := strings.Builder{}
 	if opts.Public {
 		_, _ = sb.WriteString(",public")
@@ -91,12 +91,12 @@ func NewCacheControl(opts CacheControlOptions) webserver.HandlerFunc {
 		finalCacheValue = make([]byte, 0)
 	}
 
-	// Setup middleware function
+	// Set up the middleware function.
 	return func(req *webserver.RequestContext) error {
-		// Set cache control header
+		// Set the Cache-Control header.
 		req.ResponseHeaders().SetBytesKV(util.HeaderCacheControl, finalCacheValue)
 
-		// Go to next middleware
+		// Go to the next middleware.
 		return req.Next()
 	}
 }

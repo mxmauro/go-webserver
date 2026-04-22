@@ -6,16 +6,16 @@ import (
 
 // -----------------------------------------------------------------------------
 
-// ConditionEvaluator defines a function that executes the wrapped middleware if returns true
+// ConditionEvaluator defines a function that executes the wrapped middleware if it returns true.
 type ConditionEvaluator func(req *webserver.RequestContext) (bool, error)
 
 // -----------------------------------------------------------------------------
 
-// NewConditional wraps a middleware to conditionally execute or skip it depending on the evaluator's return value
+// NewConditional wraps a middleware to conditionally execute or skip it depending on the evaluator's return value.
 func NewConditional(cond ConditionEvaluator, m webserver.HandlerFunc) webserver.HandlerFunc {
-	// Setup middleware function
+	// Set up the middleware function.
 	return func(req *webserver.RequestContext) error {
-		// Evaluate condition
+		// Evaluate the condition.
 		ok, err := cond(req)
 		if err != nil {
 			return err
@@ -24,7 +24,7 @@ func NewConditional(cond ConditionEvaluator, m webserver.HandlerFunc) webserver.
 			return m(req)
 		}
 
-		// Go to next middleware
+		// Go to the next middleware.
 		return req.Next()
 	}
 }

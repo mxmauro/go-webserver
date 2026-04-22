@@ -21,13 +21,13 @@ type TrailingSlashOptions struct {
 
 // -----------------------------------------------------------------------------
 
-// NewTrailingSlash creates new middleware to handle trailing slashes in request's paths
+// NewTrailingSlash creates a new middleware to handle trailing slashes in request paths.
 func NewTrailingSlash(opts TrailingSlashOptions) webserver.HandlerFunc {
-	// Setup middleware function
+	// Set up the middleware function.
 	return func(req *webserver.RequestContext) error {
 		uri := req.URI()
 
-		// Check if the path contains (or not) the trailing slash
+		// Check whether the path contains a trailing slash.
 		modify := 0
 		path := uri.Path()
 		pathLen := len(path)
@@ -48,14 +48,14 @@ func NewTrailingSlash(opts TrailingSlashOptions) webserver.HandlerFunc {
 			}
 			uri.SetPath(newPath)
 
-			// Redirect
+			// Redirect.
 			if opts.RedirectCode != 0 {
 				req.Redirect(util.UnsafeByteSlice2String(uri.FullURI()), int(opts.RedirectCode))
 				return nil
 			}
 		}
 
-		// Go to next middleware
+		// Go to the next middleware.
 		return req.Next()
 	}
 }

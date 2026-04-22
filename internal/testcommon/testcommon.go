@@ -41,7 +41,7 @@ func RunWebServer(t *testing.T, initCB func(srv *webserver.Server) error) *TestW
 		t: t,
 	}
 
-	//Create server
+	// Create the server.
 	tws.Server, err = webserver.Create(webserver.Options{
 		Address: "127.0.0.1",
 		Port:    3000,
@@ -50,26 +50,26 @@ func RunWebServer(t *testing.T, initCB func(srv *webserver.Server) error) *TestW
 		t.Fatalf("unable to create web server [%v]", err)
 	}
 
-	// Add some fake endpoints
+	// Add some fake endpoints.
 	tws.Server.GET("/api/version", renderApiVersion)
 	tws.Server.POST("/api/version", renderApiVersion)
 
-	// Add also profile output
+	// Add profile output as well.
 	tws.Server.ServeDebugProfiles("/debug/")
 
-	// init callback
+	// Run the init callback.
 	err = initCB(tws.Server)
 	if err != nil {
 		t.Fatalf("%v", err)
 	}
 
-	// Start server
+	// Start the server.
 	err = tws.Server.Start()
 	if err != nil {
 		t.Fatalf("unable to start web server [%v]", err)
 	}
 
-	// Done
+	// Done.
 	return tws
 }
 
@@ -89,16 +89,24 @@ func GetWorkingDirectory(t *testing.T) string {
 }
 
 func QueryApiVersion(doPost bool, queryParams map[string]string, headers http.Header, expectedStatus []int) (int, http.Header, error) {
-	var body io.Reader
-	var resp *http.Response
-
 	method := http.MethodGet
+	var body io.Reader
+
 	if doPost {
 		method = http.MethodPost
 		body = bytes.NewReader([]byte(`{ "some-key": "some-value" }`))
 	}
 
-	rawUrl := "http://127.0.0.1:3000/api/version"
+	statusCode, responseHeaders, _, err := Query(method, "/api/version", queryParams, headers, body, expectedStatus)
+	return statusCode, responseHeaders, err
+}
+
+func Query(
+	method string, path string, queryParams map[string]string, headers http.Header, body io.Reader, expectedStatus []int,
+) (int, http.Header, []byte, error) {
+	var resp *http.Response
+
+	rawUrl := "http://127.0.0.1:3000" + path
 	if queryParams != nil {
 		first := "?"
 		for k, v := range queryParams {
@@ -108,7 +116,7 @@ func QueryApiVersion(doPost bool, queryParams map[string]string, headers http.He
 	}
 	req, err := http.NewRequest(method, rawUrl, body)
 	if err != nil {
-		return 0, nil, err
+		return 0, nil, nil, err
 	}
 	if headers != nil {
 		req.Header = headers
@@ -118,14 +126,21 @@ func QueryApiVersion(doPost bool, queryParams map[string]string, headers http.He
 	defer reqCtxCancel()
 
 	resp, err = http.DefaultClient.Do(req.WithContext(reqCtx))
-	if resp != nil && resp.Body != nil {
-		_ = resp.Body.Close()
-	}
 	if err != nil {
-		return 0, nil, err
+		return 0, nil, nil, err
 	}
 	if resp == nil {
-		return 0, nil, fmt.Errorf("unexpected status code while querying api [0]")
+		return 0, nil, nil, fmt.Errorf("unexpected status code while querying api [0]")
+	}
+	defer func() {
+		if resp.Body != nil {
+			_ = resp.Body.Close()
+		}
+	}()
+
+	respBody, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return 0, nil, nil, err
 	}
 
 	statusOk := false
@@ -136,11 +151,11 @@ func QueryApiVersion(doPost bool, queryParams map[string]string, headers http.He
 		}
 	}
 	if !statusOk {
-		return resp.StatusCode, nil, fmt.Errorf("unexpected status code while querying api [%v]", resp.StatusCode)
+		return resp.StatusCode, nil, respBody, fmt.Errorf("unexpected status code while querying api [%v]", resp.StatusCode)
 	}
 
-	// Done
-	return resp.StatusCode, resp.Header, nil
+	// Done.
+	return resp.StatusCode, resp.Header, respBody, nil
 }
 
 func OpenBrowser(path string) {
@@ -158,7 +173,7 @@ func OpenBrowser(path string) {
 // -----------------------------------------------------------------------------
 
 func renderApiVersion(req *webserver.RequestContext) error {
-	// If a POST request, check for the expected body
+	// If this is a POST request, check for the expected body.
 	if bytes.Equal(req.Method(), util.UnsafeString2ByteSlice(http.MethodPost)) {
 		var decodedBody map[string]interface{}
 
@@ -184,7 +199,7 @@ func renderApiVersion(req *webserver.RequestContext) error {
 		}
 	}
 
-	// Create output
+	// Create the output.
 	output := versionApiOutput{
 		Version: "1.0.0",
 	}

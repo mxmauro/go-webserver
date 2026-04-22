@@ -39,9 +39,9 @@ var debugProfiles []debugProfile
 
 // -----------------------------------------------------------------------------
 
-// ServeDebugProfiles adds the GO runtime profile handlers to a web server
+// ServeDebugProfiles adds the Go runtime profile handlers to a web server.
 func (srv *Server) ServeDebugProfiles(basePath string, middlewares ...HandlerFunc) {
-	// Prepare a debug profile array if not done yet
+	// Prepare the debug profile list if it has not been initialized yet.
 	if debugProfiles == nil {
 		for _, profile := range pprof.Profiles() {
 			debugProfiles = append(debugProfiles, debugProfile{
@@ -68,7 +68,7 @@ func (srv *Server) ServeDebugProfiles(basePath string, middlewares ...HandlerFun
 		})
 	}
 
-	// Fix slashes
+	// Normalize the slashes.
 	if !strings.HasPrefix(basePath, "/") {
 		basePath = "/" + basePath
 	}
@@ -76,10 +76,10 @@ func (srv *Server) ServeDebugProfiles(basePath string, middlewares ...HandlerFun
 		basePath = basePath[:len(basePath)-1]
 	}
 
-	// Add an index page
+	// Add the index page.
 	srv.GET(basePath, onDebugProfilesIndex, middlewares...)
 
-	// Add profile pages
+	// Add the profile pages.
 	for _, p := range debugProfiles {
 		srv.GET(basePath+"/"+p.name, p.handler, middlewares...)
 	}
@@ -88,7 +88,7 @@ func (srv *Server) ServeDebugProfiles(basePath string, middlewares ...HandlerFun
 func onDebugProfilesIndex(req *RequestContext) error {
 	var b bytes.Buffer
 
-	// Get base url
+	// Get the base URL.
 	path := string(req.URI().Path())
 	if !strings.HasSuffix(path, "/") {
 		path += "/"
@@ -97,7 +97,7 @@ func onDebugProfilesIndex(req *RequestContext) error {
 	req.SetResponseHeader("X-Content-Type-Options", "nosniff")
 	req.SetResponseHeader("Content-Type", "text/html; charset=utf-8")
 
-	// Write index header
+	// Write the index header.
 	_, _ = b.WriteString(`<!doctype html>
 <html>
 <head>
@@ -132,7 +132,7 @@ td.ralign {
 	<tbody>
 `)
 
-	// Write each profile on the main table
+	// Write each profile to the main table.
 	for _, p := range debugProfiles {
 		link := &url.URL{
 			Path: path + p.name,
@@ -165,18 +165,18 @@ td.ralign {
 		}
 	}
 
-	// Close table and html pae
+	// Close the table and HTML page.
 	_, _ = b.WriteString(`	</tbody>
 </table>
 </body>
 </html>
 `)
 
-	// Write response
+	// Write the response.
 	_, _ = req.Write(b.Bytes())
 	req.Success()
 
-	// Done
+	// Done.
 	return nil
 }
 
@@ -214,7 +214,7 @@ func onGenerateProfile(req *RequestContext) error {
 			return nil
 		}
 
-		// Use google-pprof to parse the profile
+		// Use google-pprof to parse the profile.
 		pf, err = pprofprofile.Parse(&b)
 		if err != nil {
 			req.InternalServerError(fmt.Sprintf("Unable to parse CPU profile [err=%s]", err))
@@ -233,7 +233,7 @@ func onGenerateProfile(req *RequestContext) error {
 		req.BadRequest("Unsupported format")
 	}
 
-	// Done
+	// Done.
 	return nil
 }
 
@@ -250,7 +250,7 @@ func gatherCpuProfile(ctx context.Context, secs int, w io.Writer) error {
 		return ctx.Err()
 	}
 
-	// Done
+	// Done.
 	return nil
 }
 
@@ -279,7 +279,7 @@ func createFlameGraph(profile *pprofprofile.Profile) (*flameGraphNode, error) {
 		for i := len(sample.Location) - 1; i >= 0; i-- {
 			var childNode *flameGraphNode
 
-			// Locate child node
+			// Locate the child node.
 			if len(sample.Location[i].Line) == 0 {
 				continue
 			}
@@ -291,7 +291,7 @@ func createFlameGraph(profile *pprofprofile.Profile) (*flameGraphNode, error) {
 					break
 				}
 			}
-			// Create a new child node if not found
+			// Create a new child node if one is not found.
 			if childNode == nil {
 				childNode = &flameGraphNode{
 					FunctionName: functionName,
@@ -309,6 +309,6 @@ func createFlameGraph(profile *pprofprofile.Profile) (*flameGraphNode, error) {
 		}
 	}
 
-	// Done
+	// Done.
 	return root, nil
 }

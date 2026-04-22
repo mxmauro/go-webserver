@@ -9,9 +9,9 @@ import (
 // -----------------------------------------------------------------------------
 
 func (srv *Server) createMainHandler() fasthttp.RequestHandler {
-	// Wrapper
+	// Wrapper.
 	return func(ctx *fasthttp.RequestCtx) {
-		// Create a new request context
+		// Create a new request context.
 		req, freeReq := srv.requestCtxPool.newRequestContext(ctx, srv)
 		defer freeReq()
 
@@ -23,7 +23,7 @@ func (srv *Server) createMainHandler() fasthttp.RequestHandler {
 }
 
 func (srv *Server) createEndpointHandler(h HandlerFunc, middlewares ...HandlerFunc) fasthttp.RequestHandler {
-	// Wrapper
+	// Wrapper.
 	return func(ctx *fasthttp.RequestCtx) {
 		req, ok := ctx.UserValue(reqContextLinkKey).(*RequestContext)
 		if ok {

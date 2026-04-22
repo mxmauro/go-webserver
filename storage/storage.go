@@ -8,7 +8,7 @@ import (
 
 // -----------------------------------------------------------------------------
 
-// Storage interface for communicating with different database/key-value providers
+// Storage is the interface for communicating with different database or key-value providers.
 type Storage interface {
 	// Close shuts down the storage.
 	Close()

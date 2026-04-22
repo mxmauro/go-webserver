@@ -20,13 +20,13 @@ var (
 
 // -----------------------------------------------------------------------------
 
-// AuthErrorHandler defines a function to call when the authorization fails
+// AuthErrorHandler defines a function to call when authorization fails.
 type AuthErrorHandler func(req *webserver.RequestContext, err error) error
 
-// AuthValidatorFunc defines a function that verifies if the given key is valid
+// AuthValidatorFunc defines a function that verifies whether the given key is valid.
 type AuthValidatorFunc func(*webserver.RequestContext, []byte) (bool, error)
 
-// AuthOptions defines an authorization check
+// AuthOptions defines an authorization check.
 type AuthOptions struct {
 	// ErrorHandler defines a handler to execute if authorization fails. If not defined, will return 401 if err is nil
 	// else 500.
@@ -54,7 +54,7 @@ type AuthOptions struct {
 
 // -----------------------------------------------------------------------------
 
-// NewAuth wraps a middleware that verifies authentication
+// NewAuth wraps a middleware that verifies authentication.
 func NewAuth(opts AuthOptions) webserver.HandlerFunc {
 	var headerName []byte
 	var cookieName []byte
@@ -82,12 +82,12 @@ func NewAuth(opts AuthOptions) webserver.HandlerFunc {
 		queryName = util.UnsafeString2ByteSlice(opts.QueryName)
 	}
 
-	// Setup middleware function
+	// Set up the middleware function.
 	return func(req *webserver.RequestContext) error {
 		var key []byte
 		var err error
 
-		// Locate key
+		// Locate the key.
 		if !opts.DisableAuthorizationBearer {
 			key = req.RequestHeaders().PeekBytes(util.HeaderAuthorization)
 			if len(key) > 7 && key[6] == ' ' &&
@@ -129,7 +129,7 @@ func NewAuth(opts AuthOptions) webserver.HandlerFunc {
 			}
 		}
 
-		// Validate it if a key is found
+		// Validate it if a key is found.
 		if len(key) == 0 {
 			err = ErrNoKeyProvided
 		} else {
@@ -140,13 +140,13 @@ func NewAuth(opts AuthOptions) webserver.HandlerFunc {
 				return err
 			}
 			if success {
-				// Run next middleware
+				// Run the next middleware.
 				return req.Next()
 			}
 			err = ErrNotAuthorized
 		}
 
-		// Done
+		// Done.
 		return opts.ErrorHandler(req, err)
 	}
 }

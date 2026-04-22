@@ -8,7 +8,6 @@ import (
 	"io/fs"
 	"net"
 	"path/filepath"
-	"runtime"
 	"strconv"
 	"strings"
 	"sync/atomic"
@@ -31,20 +30,20 @@ type RequestErrorHandler func(req *RequestContext, err error)
 // HandlerFunc defines a function that handles a request.
 type HandlerFunc func(req *RequestContext) error
 
-// Server is the main server object
+// Server is the main server object.
 type Server struct {
-	srv                    fasthttp.Server
-	router                 *router.Router
-	bindAddress            net.IP
-	bindPort               uint16
-	listenErrorHandler     ListenErrorHandler
-	requestErrorHandler    RequestErrorHandler
-	middlewares            []HandlerFunc
-	state                  int32
-	startShutdownSignal    chan struct{}
-	shutdownCompleteSignal chan struct{}
-	requestCtxPool         *RequestContextPool
-	trustedProxy           *trusted_proxy.TrustedProxy
+	srv                 fasthttp.Server
+	router              *router.Router
+	bindAddress         net.IP
+	bindPort            uint16
+	listenErrorHandler  ListenErrorHandler
+	requestErrorHandler RequestErrorHandler
+	middlewares         []HandlerFunc
+	state               int32
+	startShutdownCh     chan struct{}
+	shutdownCompleteCh  chan struct{}
+	requestCtxPool      *RequestContextPool
+	trustedProxy        *trusted_proxy.TrustedProxy
 }
 
 // Options specify the server creation options.
@@ -151,9 +150,9 @@ const (
 
 // -----------------------------------------------------------------------------
 
-// Create creates a new webserver
+// Create creates a new web server.
 func Create(opts Options) (*Server, error) {
-	// Check options
+	// Validate the options.
 	if len(opts.Address) == 0 {
 		return nil, errors.New("invalid server bind address")
 	}
@@ -194,18 +193,18 @@ func Create(opts Options) (*Server, error) {
 		return nil, errors.New("the number of process' file descriptors doesn't fulfill the minimum requirements")
 	}
 
-	// Create a new server container
+	// Create a new server container.
 	srv := &Server{
-		router:                 router.New(),
-		bindAddress:            parsedBindAddress,
-		bindPort:               opts.Port,
-		listenErrorHandler:     opts.ListenErrorHandler,
-		requestErrorHandler:    opts.RequestErrorHandler,
-		middlewares:            make([]HandlerFunc, 0),
-		state:                  stateNotStarted,
-		startShutdownSignal:    make(chan struct{}, 1),
-		shutdownCompleteSignal: make(chan struct{}, 1),
-		requestCtxPool:         newRequestContextPool(),
+		router:              router.New(),
+		bindAddress:         parsedBindAddress,
+		bindPort:            opts.Port,
+		listenErrorHandler:  opts.ListenErrorHandler,
+		requestErrorHandler: opts.RequestErrorHandler,
+		middlewares:         make([]HandlerFunc, 0),
+		state:               stateNotStarted,
+		startShutdownCh:     make(chan struct{}, 1),
+		shutdownCompleteCh:  make(chan struct{}, 1),
+		requestCtxPool:      newRequestContextPool(),
 	}
 	if len(opts.TrustedProxies) > 0 {
 		srv.trustedProxy = trusted_proxy.NewTrustedProxy(opts.TrustedProxies)
@@ -218,13 +217,13 @@ func Create(opts Options) (*Server, error) {
 		}
 	}
 
-	// Override some router settings
+	// Override some router settings.
 	srv.router.RedirectTrailingSlash = true
 	srv.router.RedirectFixedPath = true
 	srv.router.HandleMethodNotAllowed = true
 	srv.router.HandleOPTIONS = false
 
-	// Set the endpoint not found handler
+	// Set the not-found handler.
 	if opts.NotFoundHandler != nil {
 		srv.router.NotFound = srv.createEndpointHandler(opts.NotFoundHandler)
 	} else {
@@ -233,7 +232,7 @@ func Create(opts Options) (*Server, error) {
 		}
 	}
 
-	// Set the method not allowed handler
+	// Set the method-not-allowed handler.
 	if opts.MethodNotAllowedHandler != nil {
 		srv.router.MethodNotAllowed = srv.createEndpointHandler(opts.MethodNotAllowedHandler)
 	} else {
@@ -242,13 +241,13 @@ func Create(opts Options) (*Server, error) {
 		}
 	}
 
-	// Check the server name
+	// Set the server name.
 	serverName := opts.Name
 	if len(serverName) == 0 {
 		serverName = defaultServerName
 	}
 
-	// Create FastHTTP server
+	// Create the FastHTTP server.
 	srv.srv = fasthttp.Server{
 		Name:               serverName,
 		Handler:            srv.createMainHandler(),
@@ -262,20 +261,28 @@ func Create(opts Options) (*Server, error) {
 		CloseOnShutdown:    true,
 	}
 
-	// Done
+	// Done.
 	return srv, nil
 }
 
-// Start initiates listening
+// Start begins listening.
 func (srv *Server) Start() error {
-	if !atomic.CompareAndSwapInt32(&srv.state, stateNotStarted, stateStarting) {
+	var network string
+
+	prevState := atomic.LoadInt32(&srv.state)
+	if prevState != stateNotStarted && prevState != stateStopped {
+		return errors.New("server is not stopped")
+	}
+	if !atomic.CompareAndSwapInt32(&srv.state, prevState, stateStarting) {
 		return errors.New("server is not stopped")
 	}
 
-	// Create the listener
-	var network string
+	srv.startShutdownCh = make(chan struct{}, 1)
+	srv.shutdownCompleteCh = make(chan struct{})
 
-	// "tcp" network is not supported by all platforms
+	// Create the listener.
+
+	// The "tcp" network is not supported by all platforms.
 	address := srv.bindAddress.String()
 	if len(srv.bindAddress) == net.IPv4len {
 		network = "tcp4"
@@ -284,94 +291,90 @@ func (srv *Server) Start() error {
 		address = "[" + address + "]"
 	}
 
-	// Create a graceful shutdown listener
+	// Create a listener that supports graceful shutdown.
 	ln, err := createListener(network, address+":"+strconv.Itoa(int(srv.bindPort)))
 	if err != nil {
-		srv.setState(stateNotStarted)
+		srv.setState(prevState)
 		return err
 	}
 
-	// Wrap a listener into a TLS listener if a TLS configuration was specified
+	// Wrap the listener in a TLS listener if a TLS configuration was specified.
 	if srv.srv.TLSConfig != nil {
 		ln = tls.NewListener(ln, srv.srv.TLSConfig.Clone())
 	}
 
-	// Start accepting connections and run in the background until shutdown or error
+	// Start accepting connections and run in the background until shutdown or error.
 	srv.serve(ln)
 
-	// Done
+	// Done.
 	return nil
 }
 
-// Stop shuts down the web server
+// Stop shuts down the web server.
 func (srv *Server) Stop() {
 	if atomic.CompareAndSwapInt32(&srv.state, stateRunning, stateStopping) {
-		srv.startShutdownSignal <- struct{}{}
-
-		// Spin until the server is really stopped
-		for atomic.LoadInt32(&srv.state) == stateStopping {
-			runtime.Gosched()
-		}
+		srv.startShutdownCh <- struct{}{}
+		<-srv.shutdownCompleteCh
 	}
 }
 
-// Use adds a middleware that will be executed as part of the request handler
+// Use adds a middleware that will be executed as part of the request handler.
 func (srv *Server) Use(middleware HandlerFunc) {
 	srv.middlewares = append(srv.middlewares, middleware)
 }
 
-// GET adds a GET handler for the specified route
+// GET adds a GET handler for the specified route.
 func (srv *Server) GET(path string, handler HandlerFunc, middlewares ...HandlerFunc) {
 	srv.router.Handle("GET", path, srv.createEndpointHandler(handler, middlewares...))
 }
 
-// HEAD adds a HEAD handler for the specified route
+// HEAD adds a HEAD handler for the specified route.
 func (srv *Server) HEAD(path string, handler HandlerFunc, middlewares ...HandlerFunc) {
 	srv.router.Handle("HEAD", path, srv.createEndpointHandler(handler, middlewares...))
 }
 
-// OPTIONS add an OPTIONS handler for the specified route
+// OPTIONS adds an OPTIONS handler for the specified route.
 func (srv *Server) OPTIONS(path string, handler HandlerFunc, middlewares ...HandlerFunc) {
 	srv.router.Handle("OPTIONS", path, srv.createEndpointHandler(handler, middlewares...))
 }
 
-// POST adds a POST handler for the specified route
+// POST adds a POST handler for the specified route.
 func (srv *Server) POST(path string, handler HandlerFunc, middlewares ...HandlerFunc) {
 	srv.router.Handle("POST", path, srv.createEndpointHandler(handler, middlewares...))
 }
 
-// PUT adds a PUT handler for the specified route
+// PUT adds a PUT handler for the specified route.
 func (srv *Server) PUT(path string, handler HandlerFunc, middlewares ...HandlerFunc) {
 	srv.router.Handle("PUT", path, srv.createEndpointHandler(handler, middlewares...))
 }
 
-// PATCH adds a PATCH handler for the specified route
+// PATCH adds a PATCH handler for the specified route.
 func (srv *Server) PATCH(path string, handler HandlerFunc, middlewares ...HandlerFunc) {
 	srv.router.Handle("PATCH", path, srv.createEndpointHandler(handler, middlewares...))
 }
 
-// DELETE adds a DELETE handler for the specified route
+// DELETE adds a DELETE handler for the specified route.
 func (srv *Server) DELETE(path string, handler HandlerFunc, middlewares ...HandlerFunc) {
 	srv.router.Handle("DELETE", path, srv.createEndpointHandler(handler, middlewares...))
 }
 
-// CustomMethod adds a custom method handler for the specified route
+// CustomMethod adds a custom method handler for the specified route.
 func (srv *Server) CustomMethod(method string, path string, handler HandlerFunc, middlewares ...HandlerFunc) {
 	srv.router.Handle(method, path, srv.createEndpointHandler(handler, middlewares...))
 }
 
-// ServeFiles adds a custom filesystem handler for the specified route
+// ServeFiles adds a custom filesystem handler for the specified route.
 func (srv *Server) ServeFiles(path string, opts ServerFilesOptions, middlewares ...HandlerFunc) error {
 	var err error
 
-	// Check some options
+	// Validate the options.
 	if opts.FS == nil {
 		if !filepath.IsAbs(opts.RootDirectory) {
 			return errors.New("absolute path must be provided")
 		}
 	}
 
-	// Normalize the path
+	// Normalize the path.
 	path, err = util.SanitizeUrlPath(path, 1)
 	if err != nil {
 		return err
@@ -383,7 +386,7 @@ func (srv *Server) ServeFiles(path string, opts ServerFilesOptions, middlewares 
 		indexNames = append(indexNames, "index.html", "index.htm")
 	}
 
-	// Create filesystem
+	// Create the filesystem handler.
 	fhfs := fasthttp.FS{
 		FS:                 opts.FS,
 		Root:               opts.RootDirectory,
@@ -396,10 +399,10 @@ func (srv *Server) ServeFiles(path string, opts ServerFilesOptions, middlewares 
 		fhfs.PathNotFound = srv.createEndpointHandler(opts.NotFoundHandler)
 	}
 
-	// If the url path contains a subdirectory within the base path, we must remove them to avoid mapping it
-	// into the filesystem. I.e.: If the base path is '/foo/bar' and root-dir is '/tmp/public' is request to
+	// If the URL path contains a subdirectory within the base path, remove it to avoid mapping it
+	// into the filesystem. For example, if the base path is '/foo/bar' and root-dir is '/tmp/public', a request to
 	// '/foo/bar/index.html' would become '/tmp/public/foo/bar/index.html' instead of '/tmp/public/index.html'.
-	toStrip := strings.Count(path[:len(path)-(len(serveFilesSuffix)+1)], "/") // Exclude the last fragment
+	toStrip := strings.Count(path[:len(path)-(len(serveFilesSuffix)+1)], "/") // Exclude the last fragment.
 	if toStrip > 0 {
 		fhfs.PathRewrite = fasthttp.NewPathSlashesStripper(toStrip)
 	}
@@ -416,7 +419,7 @@ func (srv *Server) ServeFiles(path string, opts ServerFilesOptions, middlewares 
 			basePath = basePath[:len(basePath)-1]
 		}
 
-		// Create a new path rewrite function
+		// Create a new path rewrite function.
 		origPathRewrite := fhfs.PathRewrite
 		fhfs.PathRewrite = func(ctx *fasthttp.RequestCtx) []byte {
 			var newPath []byte
@@ -430,16 +433,16 @@ func (srv *Server) ServeFiles(path string, opts ServerFilesOptions, middlewares 
 		}
 	}
 
-	// Wrap file-system handler
+	// Wrap the file-system handler.
 	fsHandler := fhfs.NewRequestHandler()
 	handler := func(req *RequestContext) error {
 		req.CallFastHttpHandler(fsHandler)
 		return nil
 	}
 
-	// And add to router
+	// Add it to the router.
 	srv.router.Handle("GET", path, srv.createEndpointHandler(handler, middlewares...))
 
-	// Done
+	// Done.
 	return nil
 }

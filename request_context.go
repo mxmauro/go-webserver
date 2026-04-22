@@ -16,7 +16,7 @@ func (req *RequestContext) UserContext() context.Context {
 	return req.userCtx
 }
 
-// SetUserContext sets a context implementation by user.
+// SetUserContext sets a user-provided context.
 func (req *RequestContext) SetUserContext(ctx context.Context) {
 	req.userCtx = ctx
 }

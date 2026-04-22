@@ -17,10 +17,10 @@ import (
 
 // -----------------------------------------------------------------------------
 
-// KeyGeneratorFunc defines a function to call when the authorization fails
+// KeyGeneratorFunc defines a function that generates the rate-limit key.
 type KeyGeneratorFunc func(req *webserver.RequestContext) []byte
 
-// LimitReachedHandler defines a function to call when the authorization fails
+// LimitReachedHandler defines a function to call when the rate limit is reached.
 type LimitReachedHandler func(req *webserver.RequestContext) error
 
 // RateLimiterOptions defines the behavior of the rate limiter middleware.
@@ -31,7 +31,7 @@ type RateLimiterOptions struct {
 	// Expiration defines the window size. Defaults to 1 minute.
 	Expiration time.Duration
 
-	// KeyGenerator allows you to generate custom keys. Defaults to req.RemoteIP().String()
+	// KeyGenerator allows you to generate custom keys. Defaults to req.RemoteIP().
 	KeyGenerator KeyGeneratorFunc
 
 	// LimitReached is called when a request hits the limit. Defaults to return status 429.
@@ -104,18 +104,18 @@ func NewRateLimiter(opts RateLimiterOptions) webserver.HandlerFunc {
 		cache = fastcache.New(size)
 	}
 
-	// Setup middleware function
+	// Set up the middleware function.
 	return func(req *webserver.RequestContext) error {
-		// Get key from request
+		// Get the key from the request.
 		key := opts.KeyGenerator(req)
 
-		// Calculate the lock slot to use
+		// Calculate the lock slot to use.
 		mtxIdx := crc32.ChecksumIEEE(key) & (rateLimiterMutexCount - 1)
 
-		// Lock entry
+		// Lock the entry.
 		mtx[mtxIdx].Lock()
 
-		// Get entry from a cache
+		// Get the entry from the cache.
 		entry := rateLimiterItem{
 			storage: opts.ExternalStorage,
 			cache:   cache,
@@ -127,59 +127,59 @@ func NewRateLimiter(opts RateLimiterOptions) webserver.HandlerFunc {
 			return err
 		}
 
-		// Get timestamp
+		// Get the current timestamp.
 		ts := uint64(time.Now().Unix())
 
-		// Set new expiration
+		// Set the new expiration.
 		entry.setExpiration(ts, expiration)
 
-		// Increment hits
+		// Increment the hit count.
 		entry.currHits += 1
 
-		// Calculate reset time and current rate
+		// Calculate the reset time and current rate.
 		resetTime := uint64(0)
 		if ts < entry.exp {
 			resetTime = entry.exp - ts
 		}
 		rate := int((uint64(entry.prevHits)*resetTime)/expiration + uint64(entry.currHits))
 
-		// Calculate how many hits can be made based on the current rate
+		// Calculate how many hits remain based on the current rate.
 		remaining := opts.Max - rate
 
-		// Save updated info
+		// Save the updated information.
 		err = entry.save(resetTime + expiration)
 		if err != nil {
 			mtx[mtxIdx].Unlock()
 			return err
 		}
 
-		// Unlock entry
+		// Unlock the entry.
 		mtx[mtxIdx].Unlock()
 
-		// Check if hits exceed the cfg.Max
+		// Check whether the hits exceed cfg.Max.
 		if remaining < 0 {
-			// Call LimitReached handler
+			// Call the LimitReached handler.
 			err = opts.LimitReached(req)
 			if err != nil {
 				return err
 			}
 
-			// Add Retry-After if not set by the handler
+			// Add Retry-After if it was not set by the handler.
 			if len(req.Response().Header.PeekBytes(util.HeaderHeaderRetryAfter)) == 0 {
-				// Return response with Retry-After header (https://tools.ietf.org/html/rfc6584)
+				// Return the response with the Retry-After header (https://tools.ietf.org/html/rfc6584).
 				req.Response().Header.SetBytesK(util.HeaderHeaderRetryAfter, strconv.FormatUint(resetTime, 10))
 			}
 
-			// Done
+			// Done.
 			return nil
 		}
 
-		// Call next handler and save error
+		// Call the next handler and save the error.
 		err = req.Next()
 
-		// Check for SkipFailedRequests and SkipSuccessfulRequests
+		// Check SkipFailedRequests.
 		if opts.SkipFailedRequests && req.Response().StatusCode() >= 400 {
-			// Lock entry
+			// Lock the entry.
 			mtx[mtxIdx].Lock()
 
 			err2 := entry.load()
@@ -189,7 +189,7 @@ func NewRateLimiter(opts RateLimiterOptions) webserver.HandlerFunc {
 				err2 = entry.save(expiration)
 			}
 
-			// Unlock entry
+			// Unlock the entry.
 			mtx[mtxIdx].Unlock()
 
 			if err2 != nil {
@@ -197,13 +197,13 @@ func NewRateLimiter(opts RateLimiterOptions) webserver.HandlerFunc {
 			}
 		}
 
-		// We can continue, update RateLimit headers
+		// Continue and update the RateLimit headers.
 		resp := req.Response()
 		resp.Header.SetBytesK(util.HeaderXRateLimitLimit, strconv.Itoa(opts.Max))
 		resp.Header.SetBytesK(util.HeaderXRateLimitRemaining, strconv.Itoa(remaining))
 		resp.Header.SetBytesK(util.HeaderXRateLimitReset, strconv.FormatUint(resetTime, 10))
 
-		// Done
+		// Done.
 		return err
 	}
 }
@@ -257,20 +257,20 @@ func (entry *rateLimiterItem) save(exp uint64) error {
 }
 
 func (entry *rateLimiterItem) setExpiration(ts uint64, expiration uint64) {
-	// Set expiration if entry does not exist
+	// Set the expiration if the entry does not exist.
 	if entry.exp == 0 {
 		entry.exp = ts + expiration
 	} else if ts >= entry.exp {
-		// The entry has expired, handle the expiration.
-		// Set the prevHits to the current hits and reset the hits to 0.
+		// The entry has expired, so handle the expiration.
+		// Set prevHits to the current hits and reset currHits to 0.
 		entry.prevHits = entry.currHits
 
 		// Reset the current hits to 0.
 		entry.currHits = 0
 
-		// Check how much into the current window it currently is and sets the
-		// expiry based on that, otherwise this would only reset on
-		// the next request and not show the correct expiry.
+		// Check how far into the current window it is and set the
+		// expiration accordingly; otherwise, it would reset only on
+		// the next request and would not show the correct expiration.
 		elapsed := ts - entry.exp
 		if elapsed >= expiration {
 			entry.exp = ts + expiration

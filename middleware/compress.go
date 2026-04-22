@@ -17,13 +17,13 @@ const (
 
 // -----------------------------------------------------------------------------
 
-// NewCompression creates a middleware that compresses the output
+// NewCompression creates a middleware that compresses the output.
 func NewCompression(level CompressionLevel) webserver.HandlerFunc {
 	var compressor fasthttp.RequestHandler
 
 	dummyHandler := func(_ *fasthttp.RequestCtx) {}
 
-	// Setup compression algorithm
+	// Set up the compression algorithm.
 	switch level {
 	case CompressionLevelFavorSpeed:
 		compressor = fasthttp.CompressHandlerBrotliLevel(
@@ -43,18 +43,18 @@ func NewCompression(level CompressionLevel) webserver.HandlerFunc {
 		)
 	}
 
-	// Setup middleware function
+	// Set up the middleware function.
 	return func(req *webserver.RequestContext) error {
-		// Go to the next middleware first
+		// Go to the next middleware first.
 		err := req.Next()
 		if err != nil {
 			return err
 		}
 
-		// Compress
+		// Compress the response.
 		req.CallFastHttpHandler(compressor)
 
-		// Done
+		// Done.
 		return nil
 	}
 }

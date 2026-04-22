@@ -32,25 +32,27 @@ func (srv *Server) serve(ln net.Listener) {
 		ch <- srv.srv.Serve(ln)
 	}(ln)
 
-	// Set a new state
+	// Set the new state.
 	srv.setState(stateRunning)
 
-	// Run in the background until shutdown or error
+	// Run in the background until shutdown or error.
 	go srv.serveLoop(ch)
 }
 
 func (srv *Server) serveLoop(ch chan error) {
+	defer close(srv.shutdownCompleteCh)
+
 	select {
 	case err := <-ch:
 		srv.setState(stateStopping)
 
-		// Web server is no longer able to accept more connections
+		// The web server can no longer accept connections.
 		if srv.listenErrorHandler != nil && err != nil {
 			srv.listenErrorHandler(srv, err)
 		}
 
-	// handle termination signal
-	case <-srv.startShutdownSignal:
+	// Handle the termination signal.
+	case <-srv.startShutdownCh:
 		srv.setState(stateStopping)
 
 		// Attempt the graceful shutdown by closing the listener and completing all inflight requests.

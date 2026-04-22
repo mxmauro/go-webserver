@@ -40,13 +40,13 @@ func (rcp *RequestContextPool) newRequestContext(ctx *fasthttp.RequestCtx, srv *
 		req.ctx = nil
 		req.tp = nil
 		req.userCtx = nil
+		req.middlewareIndex = 0
 		req.handler = nil
 		req.srvRouterHandler = nil
-		// req.middlewareIndex = 0
 		req.srvMiddlewares = nil
-		// req.srvMiddlewaresLen = 0
+		req.srvMiddlewaresLen = 0
 		req.middlewares = nil
-		// req.middlewaresLen = 0
+		req.middlewaresLen = 0
 
 		rcp.pool.Put(req)
 	}

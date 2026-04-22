@@ -78,7 +78,7 @@ func (req *RequestContext) AddResponseHeader(key string, value string) {
 }
 
 func (req *RequestContext) Error(msg string, statusCode int) {
-	// Reset response but preserve some headers
+	// Reset the response, but preserve some headers.
 	preservedHeaders := make(map[int][]byte)
 	req.ctx.Response.Header.VisitAll(func(key, value []byte) {
 		for idx, header := range preservedHeadersOnError {
@@ -87,15 +87,15 @@ func (req *RequestContext) Error(msg string, statusCode int) {
 			}
 		}
 	})
-	req.ctx.Response.Reset() // Real reset
+	req.ctx.Response.Reset() // Fully reset the response.
 	for idx, value := range preservedHeaders {
 		req.ctx.Response.Header.SetBytesKV(preservedHeadersOnError[idx], value)
 	}
 
-	// Set the new status
+	// Set the new status.
 	req.ctx.SetStatusCode(statusCode)
 
-	// Set body and Content-Type
+	// Set the body and Content-Type.
 	msgLen := len(msg)
 	if msgLen > 0 {
 		isJson := false
@@ -229,6 +229,9 @@ func (req *RequestContext) Next() error {
 	var err error
 
 	req.middlewareIndex += 1
+	defer func() {
+		req.middlewareIndex -= 1
+	}()
 
 	if req.middlewareIndex <= req.srvMiddlewaresLen {
 		err = req.srvMiddlewares[req.middlewareIndex-1](req)
@@ -250,9 +253,7 @@ func (req *RequestContext) Next() error {
 		err = errInvalidCallToNext
 	}
 
-	req.middlewareIndex -= 1
-
-	// DOne
+	// Done.
 	return err
 }
 

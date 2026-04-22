@@ -9,21 +9,21 @@ import (
 
 // -----------------------------------------------------------------------------
 
-// SanitizeUrlPath normalizes a url path. If trailingSlash < 0, removes the ending slash if any,
-// if trailingSlash > 0, always add and, if zero, keep like the original
+// SanitizeUrlPath normalizes a URL path. If trailingSlash < 0, it removes the ending slash, if any;
+// if trailingSlash > 0, it always adds one; if trailingSlash == 0, it keeps the original form.
 func SanitizeUrlPath(path string, trailingSlash int) (string, error) {
 	// Nothing to sanitize?
 	if len(path) == 0 {
 		return "/", nil
 	}
 
-	// Convert backslashes
+	// Convert backslashes.
 	path = strings.ReplaceAll(path, "\\", "/")
 
-	// Check if a trailing slash is present
+	// Check whether a trailing slash is present.
 	endsWithSlash := strings.HasSuffix(path, "/")
 
-	// Split the path in fragments and remove empty
+	// Split the path into fragments and remove empty ones.
 	newPathFragments := make([]string, 0)
 	pathFragments := strings.Split(path, "/")
 	for _, frag := range pathFragments {
@@ -40,16 +40,16 @@ func SanitizeUrlPath(path string, trailingSlash int) (string, error) {
 		}
 	}
 
-	// Join again
+	// Join the path again.
 	path = "/" + strings.Join(newPathFragments, "/")
 
-	// add trailing slash if required
+	// Add a trailing slash if required.
 	if len(newPathFragments) > 0 {
 		if trailingSlash > 0 || (trailingSlash == 0 && endsWithSlash) {
 			path += "/"
 		}
 	}
 
-	// Done
+	// Done.
 	return path, nil
 }

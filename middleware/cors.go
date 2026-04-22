@@ -52,12 +52,12 @@ type originPattern struct {
 
 // -----------------------------------------------------------------------------
 
-// DefaultCORS creates a default CORS middleware that allows requests from anywhere
+// DefaultCORS creates a default CORS middleware that allows requests from anywhere.
 func DefaultCORS() webserver.HandlerFunc {
 	return NewCORS(CORSOptions{})
 }
 
-// NewCORS creates new CORS middleware based on the specified options
+// NewCORS creates a new CORS middleware based on the specified options.
 func NewCORS(opts CORSOptions) webserver.HandlerFunc {
 	var allowedOrigins []originPattern
 	var allowedMethods []byte
@@ -65,7 +65,7 @@ func NewCORS(opts CORSOptions) webserver.HandlerFunc {
 	var allowedHeaders []byte
 	var maxAge []byte
 
-	// Parse options
+	// Parse the options.
 	if len(opts.AllowOrigins) > 0 {
 		allowedOrigins = make([]originPattern, 0)
 
@@ -80,15 +80,15 @@ func NewCORS(opts CORSOptions) webserver.HandlerFunc {
 
 			idx := strings.Index(origin, "://")
 			if idx < 0 {
-				panic("go-webserver[CORS]: invalid origin")
+				continue
 			}
 
 			op := originPattern{
 				scheme: strings.ToLower(origin[:idx]) + "://",
 				host:   strings.ToLower(origin[idx+3:]),
 			}
-			if op.scheme != "http" && op.scheme != "https" {
-				panic("go-webserver[CORS]: invalid origin scheme")
+			if op.scheme != "http://" && op.scheme != "https://" {
+				continue
 			}
 			if len(op.host) >= 2 && strings.HasPrefix(op.host, "*.") {
 				op.subdomain = true
@@ -98,13 +98,13 @@ func NewCORS(opts CORSOptions) webserver.HandlerFunc {
 			idx = strings.Index(op.host, "/")
 			if idx >= 0 {
 				if len(op.host) > idx+1 {
-					panic("go-webserver[CORS]: invalid origin path, query param or fragment")
+					continue
 				}
 				op.host = op.host[:idx]
 			}
 
-			if _, err := url.Parse("http://" + op.host); err != nil {
-				panic("go-webserver[CORS]: invalid origin host")
+			if _, err := url.Parse("http://" + op.host); err != nil || len(op.host) == 0 {
+				continue
 			}
 
 			allowedOrigins = append(allowedOrigins, op)
@@ -128,22 +128,22 @@ func NewCORS(opts CORSOptions) webserver.HandlerFunc {
 	if opts.MaxAge > 0 {
 		maxAge = util.UnsafeString2ByteSlice(strconv.Itoa(opts.MaxAge))
 	} else if opts.MaxAge < 0 {
-		maxAge = []byte{48} // Zero
+		maxAge = []byte{48} // Zero.
 	}
 
-	// Setup middleware function
+	// Set up the middleware function.
 	return func(req *webserver.RequestContext) error {
 		var allowOrigin string
 
-		// Get request origin
+		// Get the request origin.
 		origin := util.UnsafeByteSlice2String(req.RequestHeaders().PeekBytes(util.HeaderOrigin))
 		// See https://developer.mozilla.org/en-US/docs/Glossary/Preflight_request for details on how to handle
-		// preflight request.
+		// a preflight request.
 		isMethodOptions := bytes.Equal(req.Method(), util.MethodOptions)
 
-		// No origin provided? Then no CORS request
+		// No origin provided? Then this is not a CORS request.
 		if len(origin) == 0 {
-			// Add Vary header if not all origins are allowed
+			// Add the Vary header if not all origins are allowed.
 			// See https://fetch.spec.whatwg.org/#cors-protocol-and-http-caches
 			if allowedOrigins != nil {
 				req.ResponseHeaders().AddBytesKV(util.HeaderVary, util.HeaderOrigin)
@@ -152,19 +152,19 @@ func NewCORS(opts CORSOptions) webserver.HandlerFunc {
 				req.NoContent(http.StatusNoContent)
 				return nil
 			}
-			// Go to next middleware
+			// Go to the next middleware.
 			return req.Next()
 		}
 
-		// A preflight request must have the Access-Control-Request-Method header
+		// A preflight request must have the Access-Control-Request-Method header.
 		if isMethodOptions && len(req.RequestHeaders().PeekBytes(util.HeaderAccessControlRequestMethod)) == 0 {
-			// Adding Vary request for http cache
+			// Add the Vary header for HTTP caches.
 			req.ResponseHeaders().SetBytesKV(util.HeaderVary, util.HeaderOrigin)
-			// Go to next middleware
+			// Go to the next middleware.
 			return req.Next()
 		}
 
-		// Check for allowed origins
+		// Check the allowed origins.
 		if allowedOrigins == nil {
 			allowOrigin = "*"
 		} else {
@@ -178,7 +178,7 @@ func NewCORS(opts CORSOptions) webserver.HandlerFunc {
 		}
 
 		if !isMethodOptions {
-			// Add Vary header if not all origins are allowed
+			// Add the Vary header if not all origins are allowed.
 			// See https://fetch.spec.whatwg.org/#cors-protocol-and-http-caches
 			if allowedOrigins != nil {
 				req.ResponseHeaders().AddBytesKV(util.HeaderVary, util.HeaderOrigin)
@@ -186,11 +186,11 @@ func NewCORS(opts CORSOptions) webserver.HandlerFunc {
 
 			setCommonHeaders(req.ResponseHeaders(), allowOrigin, maxAge, exposeHeaders, opts.AllowCredentials)
 
-			// Go to next middleware
+			// Go to the next middleware.
 			return req.Next()
 		}
 
-		// If we reach here, we are dealing with a pre-flight request
+		// If we reach this point, this is a preflight request.
 		respHdrs := req.ResponseHeaders()
 
 		respHdrs.AddBytesKV(util.HeaderVary, util.HeaderOrigin)
@@ -214,7 +214,7 @@ func NewCORS(opts CORSOptions) webserver.HandlerFunc {
 			}
 		}
 
-		// Done
+		// Done.
 		req.NoContent(http.StatusNoContent)
 		return nil
 	}
@@ -224,31 +224,31 @@ func NewCORS(opts CORSOptions) webserver.HandlerFunc {
 
 func (op *originPattern) match(origin string) bool {
 	if !strings.HasPrefix(origin, op.scheme) {
-		return false // Scheme mismatch
+		return false // Scheme mismatch.
 	}
 
 	host := origin[len(op.scheme):]
 
 	if !strings.HasSuffix(host, op.host) {
-		return false // Host mismatch
+		return false // Host mismatch.
 	}
 
 	subdomain := host[:len(host)-len(op.host)]
 	if !op.subdomain {
 		if len(subdomain) > 0 {
-			return false // Unexpected subdomain
+			return false // Unexpected subdomain.
 		}
 	} else {
 		if len(subdomain) < 2 || (!strings.HasSuffix(subdomain, ".")) {
-			return false // Expected a subdomain
+			return false // Expected a subdomain.
 		}
 	}
-	// Does match!
+	// It matches.
 	return true
 }
 
 func setCommonHeaders(respHdrs *fasthttp.ResponseHeader, allowOrigin string, maxAge []byte, exposeHeaders []byte, allowCredentials bool) {
-	// Allow-Origin and Allow-Credentials
+	// Set Allow-Origin and Allow-Credentials.
 	if len(allowOrigin) > 0 {
 		respHdrs.SetBytesK(util.HeaderAccessControlAllowOrigin, allowOrigin)
 		if allowCredentials && allowOrigin != "*" {
@@ -256,12 +256,12 @@ func setCommonHeaders(respHdrs *fasthttp.ResponseHeader, allowOrigin string, max
 		}
 	}
 
-	// MaxAge
+	// Set Max-Age.
 	if maxAge != nil {
 		respHdrs.SetBytesKV(util.HeaderAccessControlMaxAge, maxAge)
 	}
 
-	// Expose-Headers
+	// Set Expose-Headers.
 	if exposeHeaders != nil {
 		respHdrs.SetBytesKV(util.HeaderAccessControlExposeHeaders, exposeHeaders)
 	}

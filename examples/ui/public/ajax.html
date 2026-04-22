@@ -36,10 +36,6 @@ $(function () {
         }
         $.ajax({
             url: url + "/api/version",
-            type: "POST",
-            data: JSON.stringify({ "some-key": "some-value" }),
-            dataType: "json",
-            contentType: "application/json; charset=UTF-8",
             headers: {
                 "X-PingOther": "pingpong"
             }

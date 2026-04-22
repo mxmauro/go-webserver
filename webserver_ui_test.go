@@ -3,12 +3,10 @@
 package go_webserver_test
 
 import (
-	"fmt"
-	"os"
-	"os/signal"
-	"syscall"
+	"net/http"
+	"path/filepath"
+	"strings"
 	"testing"
-	"time"
 
 	webserver "github.com/mxmauro/go-webserver/v2"
 	"github.com/mxmauro/go-webserver/v2/internal/testcommon"
@@ -18,36 +16,44 @@ import (
 // -----------------------------------------------------------------------------
 
 func TestWebServerUI(t *testing.T) {
-	//Create server
+	rootDirectory := filepath.Join(testcommon.GetWorkingDirectory(t), "examples", "ui", "public")
+
 	srv := testcommon.RunWebServer(t, func(srv *webserver.Server) error {
-		// Add some middlewares
 		srv.Use(middleware.DefaultCORS())
 		srv.Use(middleware.DisableClientCache())
 
-		// Add public files to the server
-		err := srv.ServeFiles("/", webserver.ServerFilesOptions{
-			RootDirectory: testcommon.GetWorkingDirectory(t) + "testdata/public",
+		return srv.ServeFiles("/", webserver.ServerFilesOptions{
+			RootDirectory: rootDirectory,
 		}, middleware.NewCompression(middleware.CompressionLevelDefault))
-		if err != nil {
-			return err
-		}
-
-		// Done
-		return nil
 	})
 	defer srv.Stop()
 
-	// Open default browser
-	testcommon.OpenBrowser("/")
-
-	// Wait for CTRL+C
-	fmt.Println("Server running. Press CTRL+C to stop.")
-
-	c := make(chan os.Signal, 2)
-	signal.Notify(c, os.Interrupt, syscall.SIGTERM, syscall.SIGINT)
-	select {
-	case <-c:
-	case <-time.After(5 * time.Minute):
+	_, headers, body, err := testcommon.Query("GET", "/index.html", nil, http.Header{
+		"Origin": []string{"https://ui.example"},
+	}, nil, []int{200})
+	if err != nil {
+		t.Fatalf("unable to query UI index [%v]", err)
 	}
-	fmt.Println("Shutting down...")
+
+	if !strings.Contains(string(body), "<title>go-webserver UI example</title>") {
+		t.Fatalf("unexpected UI index contents")
+	}
+	if !strings.Contains(string(body), `fetch("/api/version")`) {
+		t.Fatalf("unexpected UI client contents")
+	}
+
+	contentType := headers.Get("Content-Type")
+	if !strings.Contains(contentType, "text/html") {
+		t.Fatalf("unexpected UI content type [got:%v]", contentType)
+	}
+
+	cacheControl := headers.Get("Cache-Control")
+	if !strings.Contains(cacheControl, "no-store") {
+		t.Fatalf("unexpected Cache-Control header [got:%v]", cacheControl)
+	}
+
+	allowOrigin := headers.Get("Access-Control-Allow-Origin")
+	if allowOrigin != "*" {
+		t.Fatalf("unexpected Access-Control-Allow-Origin header [got:%v / expected:%v]", allowOrigin, "*")
+	}
 }

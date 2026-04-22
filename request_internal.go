@@ -30,7 +30,7 @@ func (req *RequestContext) sendError(statusCode int, msg string) {
 
 func (req *RequestContext) isProxyTrusted() bool {
 	if req.tp == nil {
-		return true
+		return false
 	}
 	return req.tp.IsIpTrusted(req.ctx.RemoteIP())
 }
@@ -47,19 +47,19 @@ func getFirstIpAddress(header []byte) net.IP {
 	ofs := 0
 	l := len(header)
 	for ofs < l {
-		// Skip leading spaces
+		// Skip leading spaces.
 		for ofs < l && header[ofs] == ' ' {
 			ofs += 1
 		}
 
-		// Get address
+		// Get the address.
 		startOfs := ofs
 		for ofs < l && header[ofs] != ' ' && header[ofs] != ',' {
 			ofs += 1
 		}
 		endOfs := ofs
 
-		// Skip trailing spaces
+		// Skip trailing spaces.
 		nonSpaceCharFound := false
 		for ofs < l && header[ofs] != ',' {
 			if header[ofs] != ' ' {
@@ -68,12 +68,12 @@ func getFirstIpAddress(header []byte) net.IP {
 			ofs += 1
 		}
 
-		// Skip comma if any
+		// Skip the comma, if any.
 		if ofs < l {
 			ofs += 1
 		}
 
-		// Process this address
+		// Process this address.
 		if !nonSpaceCharFound && endOfs > startOfs {
 			addr, err := netip.ParseAddr(string(header[startOfs:endOfs]))
 			if err == nil {
@@ -83,6 +83,6 @@ func getFirstIpAddress(header []byte) net.IP {
 		}
 	}
 
-	// Cannot retrieve first IP address
+	// Cannot retrieve the first IP address.
 	return nil
 }

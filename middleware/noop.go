@@ -8,11 +8,11 @@ import (
 
 // -----------------------------------------------------------------------------
 
-// NewNoOP creates a no-operation middleware
+// NewNoOP creates a no-operation middleware.
 func NewNoOP() webserver.HandlerFunc {
-	// Setup middleware function
+	// Set up the middleware function.
 	return func(req *webserver.RequestContext) error {
-		// Go to next middleware
+		// Go to the next middleware.
 		return req.Next()
 	}
 }

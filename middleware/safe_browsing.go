@@ -61,7 +61,7 @@ type SafeBrowsingOptions struct {
 
 // -----------------------------------------------------------------------------
 
-// DefaultSafeBrowsing creates default SafeBrowsing middleware with commonly used options
+// DefaultSafeBrowsing creates a default SafeBrowsing middleware with commonly used options.
 func DefaultSafeBrowsing() webserver.HandlerFunc {
 	return NewSafeBrowsing(SafeBrowsingOptions{
 		XXSSProtection:      "1; mode=block",
@@ -70,7 +70,7 @@ func DefaultSafeBrowsing() webserver.HandlerFunc {
 	})
 }
 
-// NewSafeBrowsing creates new SafeBrowsing middleware based on the specified options
+// NewSafeBrowsing creates a new SafeBrowsing middleware based on the specified options.
 func NewSafeBrowsing(opts SafeBrowsingOptions) webserver.HandlerFunc {
 	var xXssProtection []byte
 	var xContentTypeNoSniff []byte
@@ -94,26 +94,26 @@ func NewSafeBrowsing(opts SafeBrowsingOptions) webserver.HandlerFunc {
 		referrerPolicy = util.UnsafeString2ByteSlice(opts.ReferrerPolicy)
 	}
 
-	// Setup middleware function
+	// Set up the middleware function.
 	return func(req *webserver.RequestContext) error {
 		respHdrs := req.ResponseHeaders()
 
-		// Set X-XSS-Protection header
+		// Set the X-XSS-Protection header.
 		if xXssProtection != nil {
 			respHdrs.SetBytesKV(util.HeaderXXSSProtection, xXssProtection)
 		}
 
-		// Set X-Content-Type-Options header
+		// Set the X-Content-Type-Options header.
 		if xContentTypeNoSniff != nil {
 			respHdrs.SetBytesKV(util.HeaderXContentTypeOptions, xContentTypeNoSniff)
 		}
 
-		// Set X-Frame-Options header
+		// Set the X-Frame-Options header.
 		if len(opts.XFrameOptions) > 0 {
 			respHdrs.SetBytesKV(util.HeaderXFrameOptions, xFrameOptions)
 		}
 
-		// Set Strict-Transport-Security header
+		// Set the Strict-Transport-Security header.
 		if opts.HSTS.MaxAge > 0 &&
 			(req.IsTLS() ||
 				bytes.Equal(req.RequestHeaders().PeekBytes(util.HeaderXForwardedProto), util.BytesHttp)) {
@@ -128,7 +128,7 @@ func NewSafeBrowsing(opts SafeBrowsingOptions) webserver.HandlerFunc {
 			respHdrs.SetBytesK(util.HeaderStrictTransportSecurity, sb.String())
 		}
 
-		// Set the "Content-Security-Policy" or "Content-Security-Policy-Report-Only" header
+		// Set the "Content-Security-Policy" or "Content-Security-Policy-Report-Only" header.
 		if contentSecurityPolicy != nil {
 			if opts.ContentSecurityPolicyReportOnly {
 				respHdrs.SetBytesKV(util.HeaderContentSecurityPolicyReportOnly, contentSecurityPolicy)
@@ -137,12 +137,12 @@ func NewSafeBrowsing(opts SafeBrowsingOptions) webserver.HandlerFunc {
 			}
 		}
 
-		// Set Referrer-Policy header
+		// Set the Referrer-Policy header.
 		if referrerPolicy != nil {
 			respHdrs.SetBytesKV(util.HeaderReferrerPolicy, referrerPolicy)
 		}
 
-		// Go to next middleware
+		// Go to the next middleware.
 		return req.Next()
 	}
 }

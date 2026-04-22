@@ -29,11 +29,11 @@ type PanicOptions struct {
 
 // -----------------------------------------------------------------------------
 
-// NewPanic wraps a middleware that recovers from panics
+// NewPanic wraps a middleware that recovers from panics.
 func NewPanic(opts PanicOptions) webserver.HandlerFunc {
-	// Setup middleware function
+	// Set up the middleware function.
 	return func(req *webserver.RequestContext) (err error) {
-		// Define a panic handler
+		// Define a panic handler.
 		defer func() {
 			if r := recover(); r != nil {
 				var ok bool
@@ -44,20 +44,20 @@ func NewPanic(opts PanicOptions) webserver.HandlerFunc {
 					panic(r)
 				}
 
-				// Get error
+				// Get the error.
 				err, ok = r.(error)
 				if !ok {
 					err = fmt.Errorf("%v", r)
 				}
 
-				// Get stack trace
+				// Get the stack trace.
 				if opts.StackSize > 0 {
 					stack = make([]byte, opts.StackSize)
 					stackLen = runtime.Stack(stack, opts.IncludeAllGoRoutines)
 					stack = stack[:stackLen]
 				}
 
-				// Call panic error handler
+				// Call the panic error handler.
 				if opts.PanicErrorHandler != nil {
 					err = opts.PanicErrorHandler(req, err, stack)
 				} else {
@@ -66,10 +66,10 @@ func NewPanic(opts PanicOptions) webserver.HandlerFunc {
 			}
 		}()
 
-		// Run next middleware
+		// Run the next middleware.
 		err = req.Next()
 
-		// Done
+		// Done.
 		return
 	}
 }
